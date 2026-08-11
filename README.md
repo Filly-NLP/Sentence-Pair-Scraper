@@ -125,17 +125,11 @@ source .venv/bin/activate
 
 ### 3. Install dependencies
 
-```bash
-pip install click rich pyyaml feedparser beautifulsoup4 lxml readability-lxml \
-            sqlalchemy httpx lingua-language-detector simhash apscheduler \
-            pytest pytest-cov pytest-asyncio
+```powershell
+pip install -r requirements.txt
 ```
 
-Or install directly from `pyproject.toml`:
-
-```bash
-pip install -e .
-```
+> **Note for Windows users:** The `\` line-continuation syntax used in bash does not work in PowerShell. Always use `pip install -r requirements.txt` — never copy multi-line `pip install` commands from bash guides.
 
 ### 4. Verify installation
 

@@ -1,0 +1,94 @@
+sources:
+  - id: abante
+    name: Abante
+    domain: www.abante.com.ph
+    enabled: true
+    language: filipino
+    crawl_delay_seconds: 5
+    max_concurrent: 1
+    rss:
+      - url: https://www.abante.com.ph/feed/
+        category: general
+    sitemap:
+      - url: https://www.abante.com.ph/sitemap.xml
+      - url: https://www.abante.com.ph/news-sitemap.xml
+    extraction:
+      type: wordpress
+      content_selector: ".entry-content, .post-content, article .content"
+      date_selector: "time[datetime], .entry-date, .post-date"
+
+  - id: bandera
+    name: Bandera
+    domain: bandera.inquirer.net
+    enabled: true
+    language: filipino
+    crawl_delay_seconds: 10
+    max_concurrent: 1
+    rss:
+      - url: https://bandera.inquirer.net/feed
+        category: general
+    sitemap:
+      - url: https://bandera.inquirer.net/sitemap.xml
+      - url: https://bandera.inquirer.net/news-sitemap.xml
+    extraction:
+      type: wordpress
+      content_selector: ".entry-content, #article_content"
+
+  - id: pilipino_star_ngayon
+    name: Pilipino Star Ngayon
+    domain: www.philstar.com
+    enabled: true
+    language: filipino
+    crawl_delay_seconds: 5
+    max_concurrent: 1
+    url_prefix: /pilipino-star-ngayon
+    rss:
+      - url: https://www.philstar.com/rss/pilipino-star-ngayon
+        category: general
+      - url: https://www.philstar.com/rss/pilipino-star-ngayon/bansa
+        category: bansa
+      - url: https://www.philstar.com/rss/pilipino-star-ngayon/metro
+        category: metro
+      - url: https://www.philstar.com/rss/pilipino-star-ngayon/probinsiya
+        category: probinsiya
+    sitemap:
+      - url: https://www.philstar.com/sitemap.xml
+    extraction:
+      type: philstar
+      content_selector: "#sports_article_writeup, .article__writeup"
+
+  - id: pang_masa
+    name: Pang-Masa
+    domain: www.philstar.com
+    enabled: true
+    language: filipino
+    crawl_delay_seconds: 5
+    max_concurrent: 1
+    url_prefix: /pang-masa
+    rss:
+      - url: https://www.philstar.com/rss/pang-masa
+        category: general
+    sitemap:
+      - url: https://www.philstar.com/sitemap.xml
+    extraction:
+      type: philstar
+      content_selector: "#sports_article_writeup, .article__writeup"
+
+  - id: gma_filipino
+    name: GMA News (Balitambayan)
+    domain: www.gmanetwork.com
+    enabled: true
+    language: filipino
+    crawl_delay_seconds: 5
+    max_concurrent: 1
+    url_prefix: /news/balitambayan
+    rss:
+      - url: https://data.gmanetwork.com/gno/rss/balitambayan/feed.xml
+        category: balitambayan
+      - url: https://data.gmanetwork.com/gno/rss/serbisyopubliko/feed.xml
+        category: serbisyopubliko
+    sitemap:
+      - url: https://www.gmanetwork.com/news/sitemap-news.xml
+    extraction:
+      type: gma
+      content_selector: ".story_main .article-body, .story_main .article_body"

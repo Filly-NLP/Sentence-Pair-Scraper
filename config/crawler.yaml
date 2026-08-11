@@ -1,0 +1,59 @@
+crawler:
+  version: "1.0.0"
+  date_cutoff: "2022-01-01"
+
+http:
+  user_agent: "FilipinoCorpusResearchBot/1.0 (+https://github.com/Filly-NLP/Sentence-Pair-Scraper; research-bot@fillynlp.org)"
+  timeout_seconds: 30
+  max_retries: 3
+
+rate_limiting:
+  default_delay_seconds: 5
+  default_max_concurrent: 1
+  default_requests_per_minute: 10
+  default_requests_per_hour: 300
+  backoff:
+    initial_seconds: 5
+    multiplier: 2
+    max_seconds: 300
+    jitter: true
+  cooldown:
+    trigger_threshold: 5
+    duration_seconds: 3600
+
+cache:
+  robots_ttl_hours: 24
+  rss_ttl_minutes: 30
+  http_cache_dir: "data/cache"
+  use_conditional_requests: true
+
+language:
+  primary_detector: "lingua"
+  target_language: "tl"
+  min_confidence: 0.7
+  classify_mixed: true
+
+sentence:
+  min_tokens: 5
+  max_tokens: 80
+  include_quotes: false
+  include_headlines: false
+
+deduplication:
+  exact_hash: true
+  near_duplicate: true
+  near_duplicate_method: "simhash"
+  near_duplicate_threshold: 0.9
+
+storage:
+  database_url: "sqlite:///data/corpus.db"
+  raw_html_dir: "data/raw"
+  export_dir: "data/exports"
+
+dataset:
+  max_source_percentage: null
+  versioning: true
+
+monitoring:
+  check_interval_minutes: 30
+  stats_display: true

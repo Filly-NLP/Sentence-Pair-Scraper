@@ -1,0 +1,117 @@
+# =============================================================================
+# Filipino News Corpus Scraper — .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+
+# Distribution / packaging
+.Python
+build/
+dist/
+develop-eggs/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+MANIFEST
+
+# Installers
+pip-wheel-metadata/
+*.whl
+
+# -----------------------------------------------------------------------------
+# Virtual Environments
+# -----------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# -----------------------------------------------------------------------------
+# Corpus Data (large runtime files — not for version control)
+# -----------------------------------------------------------------------------
+
+# SQLite database (can grow to several GB)
+data/corpus.db
+data/corpus.db-shm
+data/corpus.db-wal
+
+# HTTP response cache
+data/cache/
+
+# Raw HTML snapshots
+data/raw/
+
+# Exported corpus files (CSV, JSONL)
+data/exports/
+
+# Application logs
+data/logs/
+
+# Keep the directory structure in git
+!data/.gitkeep
+!data/exports/.gitkeep
+!data/logs/.gitkeep
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# -----------------------------------------------------------------------------
+# IDE & Editor
+# -----------------------------------------------------------------------------
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+
+# Jupyter notebooks (not part of this project)
+*.ipynb
+.ipynb_checkpoints/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Temporary files
+*.tmp
+*.bak
+*.orig

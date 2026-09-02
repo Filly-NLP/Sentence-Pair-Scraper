@@ -1,3 +1,15 @@
+# Sources configuration
+# Optional per-source policy overrides:
+#   policy_profile: "default" | "strict" | "balanced" | "recall"
+#   min_tokens: <int>
+#   max_tokens: <int>
+#   include_quotes: <bool>
+#   include_headlines: <bool>
+#   accepted_languages: [<str>]
+#   min_language_confidence: <float>
+#   allow_mixed_language: <bool>
+#   min_quality_score: <float>
+#   noise_patterns: [<str>]
 sources:
   - id: abante
     name: Abante
@@ -6,12 +18,18 @@ sources:
     language: filipino
     crawl_delay_seconds: 5
     max_concurrent: 1
+    article_path_patterns:
+      - "^/20\\d{2}/\\d{2}/\\d{2}/[^/]+/?$"
     rss:
       - url: https://www.abante.com.ph/feed/
         category: general
     sitemap:
       - url: https://www.abante.com.ph/sitemap.xml
       - url: https://www.abante.com.ph/news-sitemap.xml
+    common_crawl:
+      enabled: false
+      url_patterns:
+        - "https://www.abante.com.ph/20*/*/*/*"
     extraction:
       type: wordpress
       content_selector: ".entry-content, .post-content, article .content"
@@ -24,12 +42,18 @@ sources:
     language: filipino
     crawl_delay_seconds: 10
     max_concurrent: 1
+    article_path_patterns:
+      - "^/\\d+/[^/]+/?$"
     rss:
       - url: https://bandera.inquirer.net/feed
         category: general
     sitemap:
       - url: https://bandera.inquirer.net/sitemap.xml
       - url: https://bandera.inquirer.net/news-sitemap.xml
+    common_crawl:
+      enabled: false
+      url_patterns:
+        - "https://bandera.inquirer.net/*/*"
     extraction:
       type: wordpress
       content_selector: ".entry-content, #article_content"
@@ -42,6 +66,9 @@ sources:
     crawl_delay_seconds: 5
     max_concurrent: 1
     url_prefix: /pilipino-star-ngayon
+    article_path_patterns:
+      - "^/(?:bansa|metro|probinsiya)/20\\d{2}/\\d{2}/\\d{2}/\\d+/[^/]+/?$"
+      - "^/pilipino-star-ngayon/[^/]+/20\\d{2}/\\d{2}/\\d{2}/\\d+/[^/]+/?$"
     rss:
       - url: https://www.philstar.com/rss/pilipino-star-ngayon
         category: general
@@ -53,6 +80,13 @@ sources:
         category: probinsiya
     sitemap:
       - url: https://www.philstar.com/sitemap.xml
+    common_crawl:
+      enabled: false
+      url_patterns:
+        - "https://www.philstar.com/bansa/20*/*/*/*/*"
+        - "https://www.philstar.com/metro/20*/*/*/*/*"
+        - "https://www.philstar.com/probinsiya/20*/*/*/*/*"
+        - "https://www.philstar.com/pilipino-star-ngayon/*/20*/*/*/*/*"
     extraction:
       type: philstar
       content_selector: "#sports_article_writeup, .article__writeup"
@@ -65,11 +99,20 @@ sources:
     crawl_delay_seconds: 5
     max_concurrent: 1
     url_prefix: /pang-masa
+    article_path_patterns:
+      - "^/(?:punto-mo|police-metro)/20\\d{2}/\\d{2}/\\d{2}/\\d+/[^/]+/?$"
+      - "^/pang-masa/[^/]+/20\\d{2}/\\d{2}/\\d{2}/\\d+/[^/]+/?$"
     rss:
       - url: https://www.philstar.com/rss/pang-masa
         category: general
     sitemap:
       - url: https://www.philstar.com/sitemap.xml
+    common_crawl:
+      enabled: false
+      url_patterns:
+        - "https://www.philstar.com/punto-mo/20*/*/*/*/*"
+        - "https://www.philstar.com/police-metro/20*/*/*/*/*"
+        - "https://www.philstar.com/pang-masa/*/20*/*/*/*/*"
     extraction:
       type: philstar
       content_selector: "#sports_article_writeup, .article__writeup"
@@ -82,13 +125,20 @@ sources:
     crawl_delay_seconds: 5
     max_concurrent: 1
     url_prefix: /news/balitambayan
+    article_path_patterns:
+      - "^/news/(?:balitambayan|serbisyopubliko)/[^/]+/\\d+/[^/]+/story/?$"
     rss:
       - url: https://data.gmanetwork.com/gno/rss/balitambayan/feed.xml
         category: balitambayan
       - url: https://data.gmanetwork.com/gno/rss/serbisyopubliko/feed.xml
         category: serbisyopubliko
-    sitemap:
-      - url: https://www.gmanetwork.com/news/sitemap-news.xml
+    # GMA published sitemap (sitemap-news.xml) contains only top-level navigation sections rather than article URLs.
+    sitemap: []
+    common_crawl:
+      enabled: false
+      url_patterns:
+        - "https://www.gmanetwork.com/news/balitambayan/*/*/story"
+        - "https://www.gmanetwork.com/news/serbisyopubliko/*/*/story"
     extraction:
       type: gma
       content_selector: ".story_main .article-body, .story_main .article_body"

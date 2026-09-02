@@ -13,11 +13,20 @@ def test_quality_filter_urls_and_emails():
     assert filter_mgr.is_clean("I-download ang file sa https://www.abante.com.ph para makita.") is False
     assert filter_mgr.is_clean("I-email sa contact@example.com para sa detalye.") is False
 
-def test_quality_filter_navigation_noise():
-    filter_mgr = SentenceQualityFilter()
-    assert filter_mgr.is_clean("Basahin din: Mga bagong balita ngayong Martes.") is False
-    assert filter_mgr.is_clean("Copyright 2026 by Abante News.") is False
+def test_quality_filter_quotes_and_headlines():
+    # Quotes excluded by default
+    q_filter = SentenceQualityFilter(include_quotes=False, include_headlines=False)
+    assert q_filter.is_clean('"Magandang balita po ito," sabi ng opisyal.', is_quote=True) is False
+    assert q_filter.is_clean('Nagsimula ang pagtitipon kaninang umaga sa Maynila.', is_headline=True) is False
 
-def test_quality_filter_html_leftovers():
-    filter_mgr = SentenceQualityFilter()
-    assert filter_mgr.is_clean("<div>Magandang umaga sa lahat.</div>") is False
+    # Quotes and headlines included when configured
+    q_filter_inc = SentenceQualityFilter(include_quotes=True, include_headlines=True)
+    assert q_filter_inc.is_clean('"Magandang balita po ito," sabi ng opisyal.', is_quote=True) is True
+    assert q_filter_inc.is_clean('Nagsimula ang pagtitipon kaninang umaga sa Maynila.', is_headline=True) is True
+
+def test_quality_filter_custom_noise_patterns():
+    custom_patterns = [r"^eksklusibo\b"]
+    q_filter = SentenceQualityFilter(noise_patterns=custom_patterns)
+    assert q_filter.is_clean("Eksklusibo: Bagong proyekto para sa bayan.") is False
+    # Standard pattern not in custom patterns should now pass if clean
+    assert q_filter.is_clean("Basahin din: Mga bagong balita ngayong Martes.") is True

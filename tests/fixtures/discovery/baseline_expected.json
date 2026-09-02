@@ -1,0 +1,8 @@
+{
+  "candidates_seen": 156,
+  "normalized_unique": 156,
+  "accepted_unique": 58,
+  "rejected_unique": 98,
+  "pang_masa": {"candidates_seen": 10, "rejected_unique": 8},
+  "gma_filipino": {"candidates_seen": 105, "rejected_unique": 90}
+}

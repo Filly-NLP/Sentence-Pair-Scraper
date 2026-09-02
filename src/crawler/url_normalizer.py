@@ -5,9 +5,11 @@ def normalize_url(url: str) -> str:
         return ""
     
     parsed = urlparse(url.strip())
-    # Normalize scheme and host to lowercase
+    # Normalize scheme and host to lowercase and omit default ports.
     scheme = parsed.scheme.lower()
     netloc = parsed.netloc.lower()
+    if (scheme == "https" and netloc.endswith(":443")) or (scheme == "http" and netloc.endswith(":80")):
+        netloc = netloc.rsplit(":", 1)[0]
     
     # Strip common tracking query parameters
     tracking_params = {
@@ -22,5 +24,10 @@ def normalize_url(url: str) -> str:
     filtered_q_params.sort()
     normalized_query = urlencode(filtered_q_params)
     
-    # Strip fragment identifiers
-    return urlunparse((scheme, netloc, parsed.path, parsed.params, normalized_query, ""))
+    # Equivalent trailing-slash forms are treated as one URL, except for root.
+    path = parsed.path or "/"
+    if path != "/":
+        path = path.rstrip("/")
+
+    # Strip fragment identifiers.
+    return urlunparse((scheme, netloc, path, parsed.params, normalized_query, ""))

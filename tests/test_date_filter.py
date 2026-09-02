@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from src.extraction.date_filter import DateFilter
 
 def test_date_filter_boundary():
@@ -29,3 +29,17 @@ def test_parse_rss_date():
     assert parsed.year == 2026
     assert parsed.month == 8
     assert parsed.day == 11
+
+
+def test_parse_url_date_fallback():
+    parsed = DateFilter.parse_date_from_url("https://example.com/news/2022/01/05/story")
+    assert parsed == datetime(2022, 1, 5)
+
+
+def test_timezone_aware_rss_dates_use_absolute_cutoff():
+    filter_mgr = DateFilter(datetime(2022, 1, 1))
+    old = datetime(2021, 12, 31, 23, 59, tzinfo=timezone.utc)
+    boundary = datetime(2022, 1, 1, 8, tzinfo=timezone(timedelta(hours=8)))
+    assert filter_mgr.validation_reason(old) == "date_before_cutoff"
+    assert filter_mgr.validation_reason(boundary) == "accepted"
+    assert filter_mgr.validate_raw("not-a-date")[1] == "date_invalid"

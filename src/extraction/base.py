@@ -1,88 +1,222 @@
-import re
+"""HTML metadata and article-body extraction with source-aware selectors."""
+
 import json
-from bs4 import BeautifulSoup
-from typing import Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, Iterable
+
+from bs4 import BeautifulSoup
+
 from src.sources.registry import SourceConfig
 
+
 class ArticleExtractor:
-    @staticmethod
-    def extract(html: str, source: SourceConfig) -> Dict[str, Any]:
-        """Extract article body text and metadata from raw HTML using standard extraction adapters."""
-        soup = BeautifulSoup(html, "lxml")
-        
-        headline = ""
-        author = ""
-        pub_date_str = ""
-        category = ""
-        
-        # 1. Parse JSON-LD metadata for highest quality metadata extraction
+    _DEFAULT_BODY_SELECTORS = (
+        ".entry-content", ".post-content", "article .content",
+        "#sports_article_writeup", ".article__writeup",
+        ".story_main .article-body", ".story_main .article_body",
+    )
+    _ARTICLE_TYPES = {"article", "newsarticle", "reportageNewsArticle".lower()}
+    _EXCLUDED_SELECTORS = (
+        "nav", "footer", "header", "aside", "sidebar", ".sidebar", ".ads",
+        ".ad", ".advertisement", ".social-share", ".comments", ".related",
+        ".newsletter", ".subscribe", ".caption", ".byline", ".author", ".dateline",
+        ".timestamp", ".publication-date", ".tags", ".share", ".photo-credit",
+        ".embed", ".video", "script", "style", "form",
+    )
+
+    @classmethod
+    def _jsonld_nodes(cls, value: Any) -> Iterable[dict[str, Any]]:
+        if isinstance(value, list):
+            for item in value:
+                yield from cls._jsonld_nodes(item)
+        elif isinstance(value, dict):
+            yield value
+            graph = value.get("@graph")
+            if graph:
+                yield from cls._jsonld_nodes(graph)
+
+    @classmethod
+    def _article_nodes(cls, soup: BeautifulSoup) -> list[dict[str, Any]]:
+        nodes: list[dict[str, Any]] = []
         for script in soup.find_all("script", type="application/ld+json"):
             try:
-                data = json.loads(script.string or "")
-                if isinstance(data, list):
-                    data = data[0] if data else {}
-                
-                # Check graph type or direct article type
-                graph = data.get("@graph")
-                if graph and isinstance(graph, list):
-                    for item in graph:
-                        if "Article" in item.get("@type", "") or "NewsArticle" in item.get("@type", ""):
-                            data = item
-                            break
-                            
-                if "Article" in data.get("@type", "") or "NewsArticle" in data.get("@type", "") or "WebPage" in data.get("@type", ""):
-                    headline = data.get("headline") or headline
-                    pub_date_str = data.get("datePublished") or pub_date_str
-                    author_data = data.get("author")
-                    if isinstance(author_data, dict):
-                        author = author_data.get("name") or author
-                    elif isinstance(author_data, list) and author_data:
-                        author = author_data[0].get("name") if isinstance(author_data[0], dict) else ""
-                    break
+                payload = json.loads(script.string or script.get_text() or "")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            for node in cls._jsonld_nodes(payload):
+                types = node.get("@type", [])
+                if isinstance(types, str):
+                    types = [types]
+                elif not isinstance(types, (list, tuple, set)):
+                    types = [types] if types else []
+                if any(str(t).lower() in cls._ARTICLE_TYPES or "article" in str(t).lower() for t in types):
+                    nodes.append(node)
+        return nodes
+
+    @staticmethod
+    def _author_name(value: Any) -> str:
+        if isinstance(value, dict):
+            return str(value.get("name") or "")
+        if isinstance(value, list):
+            names = [ArticleExtractor._author_name(item) for item in value]
+            return ", ".join(name for name in names if name)
+        return str(value or "")
+
+    @staticmethod
+    def _meta_content(soup: BeautifulSoup, **attrs: str) -> str:
+        node = soup.find("meta", attrs=attrs)
+        return (node.get("content") or "").strip() if node else ""
+
+    @classmethod
+    def _date_candidates(cls, soup: BeautifulSoup, source: SourceConfig) -> list[tuple[str, str]]:
+        candidates: list[tuple[str, str]] = []
+        # JSON-LD article nodes have the highest confidence.  Do not stop at a
+        # WebPage node or the first malformed object.
+        for node in cls._article_nodes(soup):
+            value = node.get("datePublished") or node.get("dateCreated")
+            if value:
+                candidates.append((str(value).strip(), "jsonld"))
+
+        for attrs in (
+            {"property": "article:published_time"},
+            {"name": "datePublished"},
+            {"itemprop": "datePublished"},
+            {"property": "og:article:published_time"},
+        ):
+            value = cls._meta_content(soup, **attrs)
+            if value:
+                candidates.append((value, "meta"))
+
+        selectors: list[str] = []
+        if source.extraction and source.extraction.date_selector:
+            selectors.extend(x.strip() for x in source.extraction.date_selector.split(","))
+        selectors.extend(("time[datetime]", "[itemprop='datePublished']", "[property='article:published_time']"))
+        for selector in selectors:
+            try:
+                node = soup.select_one(selector)
             except Exception:
-                pass
-
-        # 2. Extract OpenGraph and standard headers if JSON-LD fallback needed
-        if not headline:
-            og_title = soup.find("meta", property="og:title")
-            headline = og_title["content"] if og_title and og_title.get("content") else (soup.title.string if soup.title else "")
-
-        if not pub_date_str:
-            meta_pub = soup.find("meta", property="article:published_time")
-            pub_date_str = meta_pub["content"] if meta_pub and meta_pub.get("content") else ""
-
-        # 3. Clean and Extract Body Content (Generic or publisher-specific selectors)
-        content_sel = ".entry-content, .post-content, article .content, #sports_article_writeup, .article__writeup, .story_main .article-body, .story_main .article_body"
-        if source.extraction and source.extraction.content_selector:
-            content_sel = source.extraction.content_selector
-
-        body_node = None
-        for sel in content_sel.split(","):
-            node = soup.select_one(sel.strip())
+                node = None
             if node:
-                body_node = node
-                break
+                value = (node.get("datetime") or node.get("content") or node.get_text(" ", strip=True)).strip()
+                if value:
+                    candidates.append((value, "selector"))
+        return candidates
 
-        if not body_node:
-            # Fallback to generic article element
-            body_node = soup.find("article") or soup.body
+    @classmethod
+    def _select_date(cls, soup: BeautifulSoup, source: SourceConfig) -> tuple[str, str]:
+        candidates = cls._date_candidates(soup, source)
+        if not candidates:
+            return "", "missing"
+        from src.extraction.date_filter import DateFilter
+        probe = DateFilter(datetime(1970, 1, 1))
+        for value, source_name in candidates:
+            if probe.parse_date(value) is not None:
+                return value, source_name
+        return candidates[0]
 
-        # Strip headers, footers, navigation, sidebars, advertisements
+    @classmethod
+    def _select_modified_date(cls, soup: BeautifulSoup) -> tuple[str, str]:
+        for node in cls._article_nodes(soup):
+            value = node.get("dateModified") or node.get("dateUpdated")
+            if value:
+                return str(value).strip(), "jsonld_modified"
+
+        for attrs in (
+            {"property": "article:modified_time"},
+            {"name": "dateModified"},
+            {"itemprop": "dateModified"},
+            {"property": "og:updated_time"},
+        ):
+            value = cls._meta_content(soup, **attrs)
+            if value:
+                return value, "meta_modified"
+
+        return "", "missing"
+
+    @classmethod
+    def _body_node(cls, soup: BeautifulSoup, source: SourceConfig):
+        selectors: list[str] = []
+        if source.extraction and source.extraction.content_selector:
+            selectors.extend(x.strip() for x in source.extraction.content_selector.split(","))
+        selectors.extend(cls._DEFAULT_BODY_SELECTORS)
+        best_node = None
+        best_score = 0
+        best_selector = None
+        best_method = source.extraction.type if source.extraction else "generic"
+        for selector in selectors:
+            try:
+                node = soup.select_one(selector)
+            except Exception:
+                node = None
+            if node:
+                paragraphs = [p.get_text(" ", strip=True) for p in node.find_all("p")]
+                score = sum(len(p) for p in paragraphs if p)
+                if score == 0:
+                    score = len(node.get_text(" ", strip=True))
+                if score > best_score:
+                    best_node = node
+                    best_score = score
+                    best_selector = selector
+        if best_node is not None:
+            return best_node, best_method, best_selector
+        fallback_node = soup.find("article") or soup.body
+        return fallback_node, "generic-fallback", "article|body"
+
+    @classmethod
+    def extract(cls, html: str, source: SourceConfig) -> Dict[str, Any]:
+        """Extract metadata and cleaned body text.
+
+        The adapter type is retained in the result for diagnostics.  Source
+        configuration controls selectors while generic safety exclusions apply
+        to all publishers.
+        """
+        soup = BeautifulSoup(html or "", "lxml")
+        nodes = cls._article_nodes(soup)
+        headline = ""
+        author = ""
+        for node in nodes:
+            headline = headline or str(node.get("headline") or "")
+            author = author or cls._author_name(node.get("author"))
+        if not headline:
+            headline = cls._meta_content(soup, property="og:title") or (soup.title.get_text(strip=True) if soup.title else "")
+        if not author:
+            author = cls._meta_content(soup, name="author") or cls._meta_content(soup, itemprop="author")
+        pub_date_raw, date_source = cls._select_date(soup, source)
+        mod_date_raw, mod_date_source = cls._select_modified_date(soup)
+
+        body_node, extraction_method, matched_selector = cls._body_node(soup, source)
+        body_text = ""
+        paragraph_count = 0
         if body_node:
-            for bad_tag in body_node.select("nav, footer, header, sidebar, .ads, .advertisement, script, style, .social-share, .comments"):
-                bad_tag.decompose()
-            
-            # Extract paragraphs text content
-            paras = [p.get_text().strip() for p in body_node.find_all("p") if p.get_text().strip()]
-            body_text = "\n".join(paras)
-        else:
-            body_text = ""
+            for bad_selector in cls._EXCLUDED_SELECTORS:
+                for bad_tag in body_node.select(bad_selector):
+                    bad_tag.decompose()
+            paragraphs = [p.get_text(" ", strip=True) for p in body_node.find_all("p")]
+            paragraphs = [p for p in paragraphs if p]
+            if not paragraphs:
+                blocks = body_node.find_all(["div", "section", "li"], recursive=False)
+                paragraphs = [b.get_text(" ", strip=True) for b in blocks if b.get_text(" ", strip=True)]
+            if not paragraphs:
+                text = body_node.get_text(" ", strip=True)
+                paragraphs = [text] if text else []
+            paragraph_count = len(paragraphs)
+            body_text = "\n".join(paragraphs)
 
+        canonical_node = soup.find("link", rel=lambda value: value and "canonical" in value)
+        canonical_url = canonical_node.get("href", "").strip() if canonical_node else ""
         return {
-            "headline": headline.strip() if headline else "",
-            "author": author.strip() if author else "",
-            "publication_date_raw": pub_date_str.strip() if pub_date_str else "",
+            "headline": headline.strip(),
+            "author": author.strip(),
+            "publication_date_raw": pub_date_raw,
+            "publication_date_source": date_source,
+            "modified_date_raw": mod_date_raw,
+            "modified_date_source": mod_date_source,
+            "canonical_url": canonical_url,
             "article_text": body_text,
-            "category": category
+            "body_chars": len(body_text),
+            "paragraph_count": paragraph_count,
+            "body_valid": bool(body_text.strip()),
+            "selector_match": matched_selector,
+            "extraction_method": extraction_method,
+            "category": "",
         }

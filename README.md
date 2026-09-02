@@ -419,20 +419,23 @@ python -m src.cli.main discover --mode common-crawl --source abante
 The checked-in configuration remains fail-closed; no production rollout is
 implied by this implementation.
 
-### Stage 8A offline verification and safety guard
+### Stage 8 offline coverage matrix
 
-Stage 8A is implemented as offline verification of the combined discovery,
-archive, frontier, extraction, lifecycle, and deduplication contracts. Its
-synthetic `example.com` integration uses fixture-backed `httpx.MockTransport`
-responses and an autouse socket tripwire; it uses only an isolated in-memory
-SQLite session and does not open or modify the active `data/corpus.db` (or its
-WAL/SHM files). This verifies bounded reruns and object reinitialization; durable
-close/reopen restart coverage remains part of the deferred full Stage 8 work.
-It does not represent a live rollout or broader production discovery enablement.
+Stage 8 verification is offline-only, fixture-backed, and isolated from the
+active `data/corpus.db` (including its WAL/SHM files). The checked-in
+configuration remains fail-closed; tests do not activate production sources.
 
-The optional Trafilatura and WARC paths, together with the remaining full
-Stage 8 scenarios, are still deferred. No production network path or optional
-provider dependency is enabled by this slice.
+| Stage | Coverage/status | Activation |
+| --- | --- | --- |
+| 8A | In-memory fixture integration for RSS, nested gzip sitemap, archive, link frontier, extraction, lifecycle, and deduplication | Offline tests only |
+| 8B | Common Crawl metadata plus paginated NDJSON overlap/scope checks, temporary cache, durable SQLite close/reopen restart checks, transaction-safe archive cancellation, cross-article sentence deduplication, diagnostics-failure isolation, and copied-legacy migration idempotency | Offline tests only; implemented in `tests/test_stage8_offline_integration.py`, `tests/test_archive_discovery.py`, and `tests/test_stage8b_closure.py` |
+| 6 | Trafilatura fallback | Deferred; not implemented or enabled |
+| 7 | WARC capture/replay | Deferred; not implemented or enabled |
+| 9 | Staged live rollout and production activation | Deferred; requires separate approval |
+
+Stage 8B validates Common Crawl as metadata-only URL seeding. It performs no
+WARC or article-body fetches through that provider and uses only temporary
+test databases/cache paths.
 
 ---
 

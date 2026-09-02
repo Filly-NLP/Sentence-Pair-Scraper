@@ -6,19 +6,22 @@ from pathlib import Path
 import httpx
 import pytest
 from src.crawler.archive_discovery import ArchiveDiscoveryEngine
-from src.crawler.config import CrawlerConfig
+from src.crawler.common_crawl_discovery import CommonCrawlDiscoveryEngine
+from src.crawler.config import CommonCrawlConfig, CrawlerConfig
 from src.crawler.discovery import DiscoveryEngine
 from src.crawler.fetcher import HTTPFetcher
 from src.crawler.pipeline import CrawlPipeline
 from src.crawler.link_discovery import LinkDiscoveryEngine
 from src.sources.registry import (
     ArchiveConfig,
+    CommonCrawlSourceConfig,
     ExtractionConfig,
     LinkDiscoveryConfig,
     RSSFeedConfig,
     SitemapConfig,
     SourceConfig,
 )
+from src.storage.database import DatabaseManager
 from src.storage.models import Article, CrawlEvent, Sentence, Source, URL, URLDiscoveryEdge, URLStatus
 
 
@@ -72,11 +75,30 @@ def integration_transport():
             {"content-type": "text/html"},
         ),
     }
+    common_crawl_pattern = "https://example.com/news/20*/*"
+    common_crawl_responses = {
+        (common_crawl_pattern, "true", None): _fixture("common-crawl-metadata.json"),
+        (common_crawl_pattern, None, "0"): _fixture("common-crawl-page-0.ndjson"),
+        (common_crawl_pattern, None, "1"): _fixture("common-crawl-page-1.ndjson"),
+    }
     requested_urls = []
+    common_crawl_requests = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requested_url = str(request.url)
         requested_urls.append(requested_url)
+        if request.url.host == "index.commoncrawl.org":
+            common_crawl_requests.append(requested_url)
+            params = request.url.params
+            key = (params.get("url"), params.get("showNumPages"), params.get("page"))
+            if key not in common_crawl_responses:
+                raise AssertionError(f"Unexpected Common Crawl request: {requested_url}")
+            return httpx.Response(
+                200,
+                content=common_crawl_responses[key],
+                headers={"content-type": "application/json"},
+                request=request,
+            )
         if requested_url not in responses:
             raise AssertionError(
                 f"Fixture transport has no response for {requested_url}; "
@@ -85,7 +107,7 @@ def integration_transport():
         body, headers = responses[requested_url]
         return httpx.Response(200, content=body, headers=headers, request=request)
 
-    return httpx.MockTransport(handler), requested_urls, set(responses)
+    return httpx.MockTransport(handler), requested_urls, set(responses), common_crawl_requests
 
 
 def _source() -> SourceConfig:
@@ -115,6 +137,10 @@ def _source() -> SourceConfig:
         ),
         extraction=ExtractionConfig(type="generic", content_selector=".article-body"),
         link_discovery=LinkDiscoveryConfig(enabled=True, article_priority=120),
+        common_crawl=CommonCrawlSourceConfig(
+            enabled=True,
+            url_patterns=["https://example.com/news/20*/*"],
+        ),
     )
 
 
@@ -182,10 +208,10 @@ class _FixtureRobots:
 
 
 @pytest.mark.asyncio
-async def test_stage8a_offline_end_to_end_is_reconciled_and_idempotent(
+async def test_stage8_offline_end_to_end_is_reconciled_and_idempotent(
     db_session, tmp_path, integration_transport
 ):
-    transport, requested_urls, fixture_urls = integration_transport
+    transport, requested_urls, fixture_urls, common_crawl_requests = integration_transport
     source_cfg = _source()
     db_session.add(Source(
         source_id=source_cfg.id,
@@ -341,6 +367,67 @@ async def test_stage8a_offline_end_to_end_is_reconciled_and_idempotent(
     assert db_session.query(Sentence).count() == 3
     assert db_session.query(Sentence.content_hash).distinct().count() == 3
 
+    # Stage 8B: Common Crawl contributes metadata-only, paginated NDJSON
+    # seeds. Every returned publisher URL overlaps a prior method, while an
+    # external host is rejected before it can enter the queue or be fetched.
+    cc_cache = tmp_path / "common-crawl-cache"
+    cc_config = CommonCrawlConfig(
+        enabled=True,
+        index_collection="CC-MAIN-2026-30",
+        max_requests_per_source_run=10,
+        max_index_pages=10,
+        max_candidates_per_source_run=20,
+        max_response_bytes=10000,
+        max_total_response_bytes_per_source_run=50000,
+        timeout_seconds=1,
+        cache_dir=str(cc_cache),
+    )
+    async with httpx.AsyncClient(transport=transport, follow_redirects=False) as client:
+        common_crawl = CommonCrawlDiscoveryEngine(
+            db_session=db_session,
+            user_agent="Stage8TestBot/1.0",
+            config=cc_config,
+            date_cutoff=datetime(2022, 1, 1),
+        )
+        cc_report = await common_crawl.discover_source_async(source_cfg, client=client)
+
+    assert cc_report.candidates_seen == 5
+    assert cc_report.accepted_unique == 4
+    assert cc_report.rejected_unique == 1
+    assert cc_report.already_stored == 4
+    assert cc_report.candidates_added == 0
+    assert cc_report.out_of_scope_skipped == 1
+    assert any(
+        aggregate["reason"] == "host_mismatch"
+        for aggregate in cc_report["aggregates"]
+    )
+    assert cc_report["common_crawl"]["metadata_requests"] == 1
+    assert cc_report["common_crawl"]["page_requests"] == 2
+    assert cc_report["common_crawl"]["pages_fetched"] == 2
+    assert len(common_crawl_requests) == 3
+    assert all(
+        url.startswith("https://index.commoncrawl.org/CC-MAIN-2026-30-index?")
+        for url in common_crawl_requests
+    )
+    assert len(list(cc_cache.glob("*.json"))) == 3
+    assert db_session.query(URL).count() == 4
+
+    # A cache-backed rerun is offline and remains idempotent.
+    before_cached_rerun = len(common_crawl_requests)
+    async with httpx.AsyncClient(transport=transport, follow_redirects=False) as client:
+        rerun_common_crawl = CommonCrawlDiscoveryEngine(
+            db_session=db_session,
+            user_agent="Stage8TestBot/1.0",
+            config=cc_config,
+            date_cutoff=datetime(2022, 1, 1),
+        )
+        rerun_cc_report = await rerun_common_crawl.discover_source_async(
+            source_cfg, client=client
+        )
+    assert len(common_crawl_requests) == before_cached_rerun
+    assert rerun_cc_report.candidates_added == 0
+    assert rerun_cc_report["common_crawl"]["cache_hits"] == 3
+
     counts_before_rerun = {
         "urls": db_session.query(URL).count(),
         "articles": db_session.query(Article).count(),
@@ -393,7 +480,10 @@ async def test_stage8a_offline_end_to_end_is_reconciled_and_idempotent(
     await restarted_pipeline.crawl_queued_urls(source_id=source_cfg.id)
 
     assert len(requested_urls) > requested_before_rerun
-    assert set(requested_urls).issubset(fixture_urls)
+    assert all(
+        url in fixture_urls or url.startswith("https://index.commoncrawl.org/")
+        for url in requested_urls
+    )
     assert counts_before_rerun == {
         "urls": db_session.query(URL).count(),
         "articles": db_session.query(Article).count(),
@@ -421,6 +511,163 @@ def test_stage8a_link_rejection_contract_is_stable():
     assert batch.counters["accepted_unique"] == 3
     assert batch.counters["unique_normalized"] == 7
     assert batch.counters["accepted_unique"] + batch.counters["rejected_unique"] == batch.counters["unique_normalized"]
+
+
+@pytest.mark.asyncio
+async def test_stage8b_file_database_close_reopen_preserves_crawl_state(
+    tmp_path, integration_transport
+):
+    transport, _requested_urls, _fixture_urls, _common_crawl_requests = integration_transport
+    source_cfg = _source()
+    db_path = tmp_path / "stage8b-restart.db"
+    db_url = f"sqlite:///{db_path.as_posix()}"
+
+    manager = DatabaseManager(db_url)
+    manager.init_db()
+    session = manager.get_session()
+    session.add(Source(
+        source_id=source_cfg.id,
+        name=source_cfg.name,
+        domain=source_cfg.domain,
+        enabled=True,
+        language=source_cfg.language,
+    ))
+    session.commit()
+
+    async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+        discovery = DiscoveryEngine(
+            db_session=session,
+            user_agent="Stage8TestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            timeout=1,
+            max_sitemap_depth=5,
+            max_sitemap_documents=10,
+            max_sitemap_roots=5,
+            max_candidates=20,
+        )
+        await discovery.discover_source_async(source_cfg, client=client)
+        archive = ArchiveDiscoveryEngine(
+            db_session=session,
+            user_agent="Stage8TestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            timeout=1,
+            apply_delay=False,
+        )
+        await archive.discover_source_async(
+            source_cfg,
+            client=client,
+            from_date=date(2026, 8, 11),
+            to_date=date(2026, 8, 11),
+            max_periods_override=1,
+            max_pages_override=2,
+        )
+
+    # Reopen before crawl to verify discovery queue durability, then close
+    # and reopen again to verify a completed crawl is restart-idempotent.
+    session.close()
+    manager.engine.dispose()
+    manager = DatabaseManager(db_url)
+    session = manager.get_session()
+
+    def crawl_once():
+        config = _config(tmp_path / "restart-config")
+        pipeline = CrawlPipeline(session, config, "Stage8TestBot/1.0")
+        pipeline.robots_mgr = _FixtureRobots()
+        pipeline._source_config = lambda _source_id: source_cfg
+        fetcher = HTTPFetcher("Stage8TestBot/1.0", cache=None, timeout=1, max_retries=1)
+        fetcher.client = httpx.AsyncClient(transport=transport, follow_redirects=True)
+        pipeline.fetcher = fetcher
+        return pipeline
+
+    await crawl_once().crawl_queued_urls(source_id=source_cfg.id)
+
+    def snapshot(current_session):
+        urls = tuple(sorted(
+            (
+                row.url,
+                row.source_id,
+                row.status,
+                row.discovery_method,
+                row.discovery_depth,
+                row.frontier_priority,
+                row.sentence_count,
+            )
+            for row in current_session.query(URL).all()
+        ))
+        edges = tuple(sorted(
+            (
+                edge.from_url.url,
+                edge.to_url.url,
+                edge.discovery_method,
+                edge.depth,
+            )
+            for edge in current_session.query(URLDiscoveryEdge).all()
+        ))
+        articles = tuple(sorted(
+            (article.url, article.content_hash, article.sentence_count)
+            for article in current_session.query(Article).all()
+        ))
+        sentences = tuple(sorted(
+            (sentence.article_id, sentence.content_hash)
+            for sentence in current_session.query(Sentence).all()
+        ))
+        return urls, edges, articles, sentences
+
+    before_restart = snapshot(session)
+    assert len(before_restart[0]) == 4
+    assert len(before_restart[2]) == 3
+    assert len(before_restart[3]) == 3
+    linked = session.query(URL).filter(URL.url.endswith("/103/linked-story")).one()
+    assert linked.source_id == source_cfg.id
+    assert linked.discovery_method == "LINK"
+    assert linked.discovery_depth == 1
+    assert linked.frontier_priority == 120
+    assert session.query(URL).filter(URL.url == "https://example.com/news/2026/08/11/100/parent-story").one().status == URLStatus.ACCEPTED
+
+    session.close()
+    manager.engine.dispose()
+    manager = DatabaseManager(db_url)
+    session = manager.get_session()
+
+    async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+        restarted_discovery = DiscoveryEngine(
+            db_session=session,
+            user_agent="Stage8TestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            timeout=1,
+            max_sitemap_depth=5,
+            max_sitemap_documents=10,
+            max_sitemap_roots=5,
+            max_candidates=20,
+        )
+        discovery_report = await restarted_discovery.discover_source_async(
+            source_cfg, client=client
+        )
+        assert discovery_report.queued_new == 0
+        restarted_archive = ArchiveDiscoveryEngine(
+            db_session=session,
+            user_agent="Stage8TestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            timeout=1,
+            apply_delay=False,
+        )
+        archive_report = await restarted_archive.discover_source_async(
+            source_cfg,
+            client=client,
+            from_date=date(2026, 8, 11),
+            to_date=date(2026, 8, 11),
+            max_periods_override=1,
+            max_pages_override=2,
+        )
+        assert archive_report["links_added"] == 0
+
+    await crawl_once().crawl_queued_urls(source_id=source_cfg.id)
+    assert snapshot(session) == before_restart
+    assert session.query(URL.url).distinct().count() == 4
+    assert session.query(Article.content_hash).distinct().count() == 3
+    assert session.query(Sentence.content_hash).distinct().count() == 3
+    session.close()
+    manager.engine.dispose()
 
 
 def test_stage8a_tripwire_has_not_been_bypassed():

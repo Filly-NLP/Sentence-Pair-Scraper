@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -7,7 +8,7 @@ import pytest
 from src.crawler.archive_discovery import ArchiveDiscoveryEngine
 from src.crawler.robots import RobotsManager
 from src.sources.registry import ArchiveConfig, SourceConfig, SourceRegistry
-from src.storage.models import URL
+from src.storage.models import Source, URL
 
 
 class _MockResponse:
@@ -238,3 +239,132 @@ def test_all_real_sources_are_archive_disabled_by_default():
     for source in registry.list_sources():
         if source.archive is not None:
             assert source.archive.enabled is False
+
+
+@pytest.mark.asyncio
+async def test_cancellation_rolls_back_staged_candidates_and_closes_owned_client(
+    db_session, monkeypatch
+):
+    source = SourceConfig(
+        id="cancel",
+        name="Cancellation",
+        domain="example.com",
+        archive=ArchiveConfig(
+            enabled=True,
+            granularity="day",
+            url_template="https://example.com/archive/{yyyy}/{mm}/{dd}/",
+            article_link_selector="a.article-link",
+            pagination_mode="page_template",
+            page_template="{url}?page={page}",
+            max_pages_per_period=2,
+        ),
+        article_path_patterns=[r"^/2026/08/11/[^/]+$"],
+    )
+    db_session.add(Source(source_id=source.id, name=source.name, domain=source.domain))
+    db_session.commit()
+
+    staged = asyncio.Event()
+    engine = ArchiveDiscoveryEngine(
+        db_session=db_session,
+        user_agent="OfflineTestBot/1.0",
+        date_cutoff=datetime(2022, 1, 1),
+        apply_delay=False,
+    )
+    original_extract_links = engine._extract_links
+
+    def extract_links_after_stage(html, page_url, selector):
+        links = original_extract_links(html, page_url, selector)
+
+        def staged_links():
+            for link in links:
+                yield link
+            staged.set()
+
+        return staged_links()
+
+    engine._extract_links = extract_links_after_stage
+    page = "<a class='article-link' href='https://example.com/2026/08/11/one'>One</a>"
+
+    class ArchiveTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            if request.url.params.get("page") == "2":
+                await asyncio.sleep(0)
+            return httpx.Response(
+                200,
+                content=page.encode("utf-8"),
+                headers={"content-type": "text/html"},
+                request=request,
+            )
+
+    owned_client = httpx.AsyncClient(transport=ArchiveTransport())
+    monkeypatch.setattr(
+        "src.crawler.archive_discovery.httpx.AsyncClient",
+        lambda **_kwargs: owned_client,
+    )
+    archive_task = asyncio.create_task(
+        engine.discover_source_async(
+            source,
+            from_date=date(2026, 8, 11),
+            to_date=date(2026, 8, 11),
+            max_pages_override=2,
+        )
+    )
+
+    async def cancel_after_stage():
+        await staged.wait()
+        archive_task.cancel()
+
+    cancellation_task = asyncio.create_task(cancel_after_stage())
+    with pytest.raises(asyncio.CancelledError):
+        await archive_task
+    await cancellation_task
+
+    assert owned_client.is_closed
+    assert db_session.query(URL).count() == 0
+    monkeypatch.undo()
+
+    # A fresh run inserts the staged URL exactly once, and a further rerun is
+    # duplicate-free.
+    rerun_page = "<a class='article-link' href='https://example.com/2026/08/11/one'>One</a>"
+
+    def rerun_handler(request):
+        return httpx.Response(
+            200,
+            content=rerun_page.encode("utf-8"),
+            headers={"content-type": "text/html"},
+            request=request,
+        )
+
+    rerun_transport = httpx.MockTransport(rerun_handler)
+    async with httpx.AsyncClient(transport=rerun_transport) as client:
+        rerun = ArchiveDiscoveryEngine(
+            db_session=db_session,
+            user_agent="OfflineTestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            apply_delay=False,
+        )
+        report = await rerun.discover_source_async(
+            source,
+            client=client,
+            from_date=date(2026, 8, 11),
+            to_date=date(2026, 8, 11),
+            max_pages_override=1,
+        )
+        assert report["links_added"] == 1
+
+    async with httpx.AsyncClient(transport=rerun_transport) as client:
+        second = ArchiveDiscoveryEngine(
+            db_session=db_session,
+            user_agent="OfflineTestBot/1.0",
+            date_cutoff=datetime(2022, 1, 1),
+            apply_delay=False,
+        )
+        report = await second.discover_source_async(
+            source,
+            client=client,
+            from_date=date(2026, 8, 11),
+            to_date=date(2026, 8, 11),
+            max_pages_override=1,
+        )
+        assert report["links_added"] == 0
+    assert db_session.query(URL).count() == 1

@@ -368,6 +368,7 @@ class ArchiveDiscoveryEngine:
             client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=True)
             should_close_client = True
 
+        nested = self.session.begin_nested() if active_persist and self.session is not None else None
         try:
             for period_dt, period_ctx in periods:
                 if stats["pages_fetched"] >= max_total_pages or stats["links_added"] >= max_candidates:
@@ -517,10 +518,29 @@ class ArchiveDiscoveryEngine:
             if active_persist and self.session is not None:
                 try:
                     self.session.flush()
+                    if nested is not None:
+                        nested.commit()
                     self.session.commit()
                 except Exception:
+                    if nested is not None:
+                        nested.rollback()
                     self.session.rollback()
                     raise
+
+        except asyncio.CancelledError:
+            # Archive candidates are staged in a savepoint so cancellation
+            # cannot leave queue rows (or archive events) pending for a later
+            # unrelated commit. Preserve the caller's outer transaction.
+            if nested is not None:
+                try:
+                    nested.rollback()
+                except Exception:
+                    self.session.rollback()
+            raise
+        except Exception:
+            if nested is not None:
+                nested.rollback()
+            raise
 
         finally:
             if should_close_client:

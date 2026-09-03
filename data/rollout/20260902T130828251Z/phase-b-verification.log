@@ -1,0 +1,25 @@
+Phase B verification: BLOCKED_AT_LIVE_DISCOVERY
+Run: 20260902T130828251Z
+Source: bandera
+Range: 2026-08-17 through 2026-08-23 (7 daily periods)
+
+Offline gate: PASS
+- Raw evidence validation completed.
+- 20 focused offline tests passed.
+- Verified backup seeded the isolated trial database.
+- 67 inherited active rows quarantined; 0 eligible inherited rows remained.
+- Seven-day dry-run planned exactly 7 periods and made no database writes.
+
+Live gate: STOP
+- Corrected bounded live attempt: CRAWL_f13284d3f59142ab.
+- Seven archive requests were issued, one per exact date period.
+- All seven responses were HTTP 403 from www.inquirer.net.
+- Pages fetched: 0. Candidates seen: 0. Archive rows added: 0.
+- Pagination requests: 0. Article crawl: not run.
+- Earlier sandbox attempt had connection failures; the first wrapper attempt failed before network access.
+
+Canonical safety: PASS
+- data/corpus.db and its -wal/-shm sidecars match the before hashes.
+- Only the isolated trial database contains the live discovery audit events.
+
+Decision: do not advance to the bounded article crawl or Phase C. Keep archive disabled pending a reproducible, approved access path.

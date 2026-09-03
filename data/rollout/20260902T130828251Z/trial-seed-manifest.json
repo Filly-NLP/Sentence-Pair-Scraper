@@ -1,0 +1,39 @@
+{
+  "run_id": "20260902T130828251Z",
+  "seed_method": "sqlite3.Connection.backup",
+  "source_backup": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T104619598Z\\corpus.db.backup.sqlite",
+  "source_backup_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "expected_source_backup_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "source_backup_size_bytes": 192512,
+  "source_backup_integrity_check": [
+    "ok"
+  ],
+  "source_table_counts": {
+    "sources": 5,
+    "urls": 70,
+    "articles": 3,
+    "sentences": 21,
+    "crawl_runs": 8,
+    "crawl_events": 72,
+    "url_discovery_edges": 0,
+    "discovery_observations": 9,
+    "discovery_observation_samples": 10
+  },
+  "trial_database": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T130828251Z\\trial.db",
+  "trial_size_bytes": 192512,
+  "trial_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "trial_integrity_check": [
+    "ok"
+  ],
+  "trial_table_counts": {
+    "sources": 5,
+    "urls": 70,
+    "articles": 3,
+    "sentences": 21,
+    "crawl_runs": 8,
+    "crawl_events": 72,
+    "url_discovery_edges": 0,
+    "discovery_observations": 9,
+    "discovery_observation_samples": 10
+  }
+}

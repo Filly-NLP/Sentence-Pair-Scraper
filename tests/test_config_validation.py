@@ -179,6 +179,12 @@ def test_checked_in_stage8_runtime_is_fail_closed():
         source.archive is None or not source.archive.enabled
         for source in sources.list_sources()
     )
+    assert crawler.get("extraction.fallback.trafilatura.enabled") is False
+    assert all(
+        source.extraction is None
+        or not source.extraction.trafilatura.enabled
+        for source in sources.list_sources()
+    )
 
     # Optional providers may be added later, but checked-in configuration may
     # not silently turn on a runtime path before its rollout is approved.
@@ -193,3 +199,35 @@ def test_checked_in_stage8_runtime_is_fail_closed():
         assert section is None or (
             isinstance(section, dict) and section.get("enabled") is False
         ), f"optional provider must be absent or explicitly disabled: {path}"
+
+
+def test_optional_stage_config_validation_and_defaults(tmp_path):
+    crawler_yaml = tmp_path / "crawler.yaml"
+    crawler_yaml.write_text(
+        """
+extraction:
+  fallback:
+    trafilatura:
+      enabled: true
+      trigger: empty_or_short_primary
+      min_body_chars: 250
+      favor_precision: false
+warc:
+  enabled: true
+  directory: data/warc-test
+  max_response_bytes: 100
+  rotate_bytes: 200
+  max_total_bytes_per_run: 300
+  max_disk_bytes: 400
+  retention:
+    mode: manual
+""",
+        encoding="utf-8",
+    )
+    config = CrawlerConfig(crawler_yaml)
+    assert config.get("extraction.fallback.trafilatura.enabled") is True
+    assert config.get("warc.max_disk_bytes") == 400
+
+    crawler_yaml.write_text("warc:\n  directory: ../outside\n", encoding="utf-8")
+    with pytest.raises(CrawlerConfigValidationError, match="warc.directory"):
+        CrawlerConfig(crawler_yaml)

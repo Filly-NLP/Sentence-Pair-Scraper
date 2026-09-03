@@ -4,13 +4,12 @@ from src.cli.main import crawl_cmd, export_cmd, stats_cmd
 
 
 class _Config:
-    def get(self, key):
+    def get(self, key, default=None):
         values = {
             "storage.database_url": "sqlite:///:memory:",
             "http.user_agent": None,
         }
-        assert key in values
-        return values[key]
+        return values.get(key, default)
 
 
 class _Query:
@@ -18,7 +17,7 @@ class _Query:
         return self
 
     def count(self):
-        return 0
+        return 1
 
     def group_by(self, *args, **kwargs):
         return self
@@ -43,6 +42,7 @@ class _DatabaseManager:
 
     def __init__(self, url):
         self.initialized = False
+        self.read_only = False
         self.session_opened = False
         self.url = url
         self.__class__.instances.append(self)
@@ -50,18 +50,27 @@ class _DatabaseManager:
     def init_db(self):
         self.initialized = True
 
+    @classmethod
+    def read_only(cls, url):
+        manager = cls(url)
+        manager.read_only = True
+        return manager
+
     @contextmanager
     def get_session(self):
-        assert self.initialized, "CLI must migrate/init before opening a session"
+        assert self.initialized or self.read_only, "CLI must initialize or open read-only before a session"
         self.session_opened = True
         yield _Session()
 
 
 class _Pipeline:
+    calls = []
+
     def __init__(self, *args, **kwargs):
         pass
 
     async def crawl_queued_urls(self, **kwargs):
+        self.__class__.calls.append(kwargs)
         return None
 
 
@@ -73,13 +82,19 @@ class _Exporter:
         return 0
 
 
-def test_crawl_export_and_stats_initialize_database_before_session(monkeypatch, tmp_path):
+def test_mutating_and_read_only_cli_commands_open_the_expected_database_mode(monkeypatch, tmp_path):
     monkeypatch.setattr("src.cli.main.DatabaseManager", _DatabaseManager)
     monkeypatch.setattr("src.cli.main.CrawlPipeline", _Pipeline)
     monkeypatch.setattr("src.storage.exporter.Exporter", _Exporter)
 
     obj = {"config": _Config()}
-    crawl_cmd.callback.__wrapped__(obj, source=None)
+    _Pipeline.calls.clear()
+    crawl_cmd.callback.__wrapped__(
+        obj,
+        source="test-source",
+        limit=2,
+        discovery_method="default",
+    )
     export_cmd.callback.__wrapped__(
         obj,
         output=str(tmp_path / "corpus.jsonl"),
@@ -93,4 +108,11 @@ def test_crawl_export_and_stats_initialize_database_before_session(monkeypatch, 
     stats_cmd.callback.__wrapped__(obj)
 
     assert len(_DatabaseManager.instances) == 3
-    assert all(manager.initialized and manager.session_opened for manager in _DatabaseManager.instances)
+    assert _DatabaseManager.instances[0].initialized is True
+    assert _DatabaseManager.instances[0].read_only is False
+    assert _DatabaseManager.instances[1].read_only is True
+    assert _DatabaseManager.instances[2].read_only is True
+    assert len(_Pipeline.calls) == 1
+    assert _Pipeline.calls[0]["source_id"] == "test-source"
+    assert _Pipeline.calls[0]["limit"] == 2
+    assert _Pipeline.calls[0]["discovery_method"] == "default"

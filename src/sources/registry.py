@@ -48,6 +48,13 @@ class CommonCrawlSourceConfig:
         return list(self.url_patterns)
 
 
+@dataclass(frozen=True)
+class TrafilaturaSourceConfig:
+    """Per-source gate for the optional body-only fallback."""
+
+    enabled: bool = False
+
+
 @dataclass
 class ArchiveConfig:
     enabled: bool = False
@@ -71,11 +78,12 @@ class ArchiveConfig:
     date_format: Optional[str] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class ExtractionConfig:
     type: str
     content_selector: Optional[str] = None
     date_selector: Optional[str] = None
+    trafilatura: TrafilaturaSourceConfig = field(default_factory=TrafilaturaSourceConfig)
 
 
 @dataclass
@@ -329,6 +337,24 @@ def validate_source_dict(src: Dict[str, Any]) -> None:
             if not isinstance(upat, str) or not upat.strip():
                 raise ConfigValidationError(f"Source '{source_id}' invalid archive 'url_pattern': must be a non-empty string")
 
+    extraction = src.get("extraction")
+    if extraction is not None:
+        if not isinstance(extraction, dict):
+            raise ConfigValidationError(
+                f"Source '{source_id}' invalid 'extraction': must be a dictionary"
+            )
+        trafilatura = extraction.get("trafilatura")
+        if trafilatura is not None:
+            if not isinstance(trafilatura, dict):
+                raise ConfigValidationError(
+                    f"Source '{source_id}' invalid 'extraction.trafilatura': must be a dictionary"
+                )
+            enabled = trafilatura.get("enabled", False)
+            if not isinstance(enabled, bool):
+                raise ConfigValidationError(
+                    f"Source '{source_id}' invalid 'extraction.trafilatura.enabled': must be a boolean"
+                )
+
     link_discovery = src.get("link_discovery")
     if link_discovery is not None:
         if not isinstance(link_discovery, dict):
@@ -474,10 +500,14 @@ class SourceRegistry:
             ext_data = src.get("extraction")
             ext_cfg = None
             if ext_data:
+                trafilatura_data = ext_data.get("trafilatura") or {}
                 ext_cfg = ExtractionConfig(
                     type=ext_data.get("type", "generic"),
                     content_selector=ext_data.get("content_selector"),
-                    date_selector=ext_data.get("date_selector")
+                    date_selector=ext_data.get("date_selector"),
+                    trafilatura=TrafilaturaSourceConfig(
+                        enabled=trafilatura_data.get("enabled", False)
+                    ),
                 )
 
             arch_data = src.get("archive")

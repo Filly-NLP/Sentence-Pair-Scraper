@@ -1,0 +1,465 @@
+{
+  "run_id": "20260902T130828251Z",
+  "validated_at_utc": "2026-09-02T13:13:15.025806+00:00",
+  "raw_evidence_dir": "C:\\Users\\Dominic\\.gemini\\antigravity-ide\\brain\\8c83375a-0d3e-47e2-8242-2d5734b8d420\\raw_evidence",
+  "manifest_path": "C:\\Users\\Dominic\\Downloads\\raw_evidence_manifest.md",
+  "manifest_present": true,
+  "raw_file_count": 17,
+  "raw_files": [
+    {
+      "file": "archive_2026-08-17.html",
+      "size_bytes": 157913,
+      "sha256": "c0928feccec3ee32ef64253544f517a26ebf717ed135579a39551d02c54d11d6"
+    },
+    {
+      "file": "archive_2026-08-17.html.headers.txt",
+      "size_bytes": 1142,
+      "sha256": "9effd2723cd935b9868b45d535418681a8d3c3e3f2f2c1f9e9dd16e941d50160"
+    },
+    {
+      "file": "archive_2026-08-18.html",
+      "size_bytes": 156578,
+      "sha256": "be08811a5d13111f2ccfcc293561120c4b8d70bd7de138e831c9d4697d25802a"
+    },
+    {
+      "file": "archive_2026-08-18.html.headers.txt",
+      "size_bytes": 1144,
+      "sha256": "09cbe46683c8414d3ef27c853508a6506b5ab18f8a60eeac263267c69df9c76f"
+    },
+    {
+      "file": "archive_2026-08-19.html",
+      "size_bytes": 148616,
+      "sha256": "09c2a333014817e870176c80d0f3a5ac968010ebec9d1408892aa93f23111199"
+    },
+    {
+      "file": "archive_2026-08-19.html.headers.txt",
+      "size_bytes": 1144,
+      "sha256": "9ec1ce333aa3c9fcc19e343993c1def591b6abf5c7246161d02a3d84bb0e4447"
+    },
+    {
+      "file": "article_453856_nanay_ni_sachzna.html",
+      "size_bytes": 181882,
+      "sha256": "5ba5f73198e63c43ce54589ae9fd9c04dc57e16f70840175652f9eb304b870c0"
+    },
+    {
+      "file": "article_453856_nanay_ni_sachzna.html.headers.txt",
+      "size_bytes": 1398,
+      "sha256": "770e527868221f88c8fdaed8a4f889642d62005cbe37221391d100e767c587d7"
+    },
+    {
+      "file": "article_453955_sen_bam.html",
+      "size_bytes": 179856,
+      "sha256": "20c87b3648dc0127157b1045165679b0b01283b5714dd923f6b08164bd9e0cf0"
+    },
+    {
+      "file": "article_453955_sen_bam.html.headers.txt",
+      "size_bytes": 1396,
+      "sha256": "0fd253203ea6f6de389e586b152802a39c87071a200964b2e02da459173e9d08"
+    },
+    {
+      "file": "article_453976_dogshow_divas.html",
+      "size_bytes": 210976,
+      "sha256": "da7c8caead5307f1cff749eae658f3c292b9143c9832e558f925fea02468083a"
+    },
+    {
+      "file": "article_453976_dogshow_divas.html.headers.txt",
+      "size_bytes": 1396,
+      "sha256": "ab0875014050f707971d65cc6af3a81070555260136144628f9a53df3288c10a"
+    },
+    {
+      "file": "bandera_feed.xml",
+      "size_bytes": 82485,
+      "sha256": "8e492e23993d31d8be923b34ed32dde7a285d09eee31f212d83edc23ae6e7bea"
+    },
+    {
+      "file": "bandera_feed.xml.headers.txt",
+      "size_bytes": 1471,
+      "sha256": "e3545614b0cc5d9a941345d4fbc03d9057117d1aca6ced62a348d3303b63b0dd"
+    },
+    {
+      "file": "http_responses.json",
+      "size_bytes": 11927,
+      "sha256": "273b3d156b8cfe92c14d52c033722d78cc44ec4ad0ae47e6dea85afb851bd905"
+    },
+    {
+      "file": "inquirer_robots.txt",
+      "size_bytes": 441,
+      "sha256": "535c7a65306dd524053bef0d127e45a3cd059337eee032e0cdb833105e8dc649"
+    },
+    {
+      "file": "inquirer_robots.txt.headers.txt",
+      "size_bytes": 707,
+      "sha256": "4ee1f0befa0d2aad0a2821fb4f73fda9a0a7f4abfb741a446ca5de4c56647657"
+    }
+  ],
+  "headers": {
+    "header_file_count": 8,
+    "all_header_statuses_valid": true,
+    "all_header_content_types_valid": true,
+    "all_body_artifacts_have_headers": true,
+    "responses": [
+      {
+        "header_file": "archive_2026-08-17.html.headers.txt",
+        "artifact_file": "archive_2026-08-17.html",
+        "sha256": "9effd2723cd935b9868b45d535418681a8d3c3e3f2f2c1f9e9dd16e941d50160",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "archive_2026-08-18.html.headers.txt",
+        "artifact_file": "archive_2026-08-18.html",
+        "sha256": "09cbe46683c8414d3ef27c853508a6506b5ab18f8a60eeac263267c69df9c76f",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "archive_2026-08-19.html.headers.txt",
+        "artifact_file": "archive_2026-08-19.html",
+        "sha256": "9ec1ce333aa3c9fcc19e343993c1def591b6abf5c7246161d02a3d84bb0e4447",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "article_453856_nanay_ni_sachzna.html.headers.txt",
+        "artifact_file": "article_453856_nanay_ni_sachzna.html",
+        "sha256": "770e527868221f88c8fdaed8a4f889642d62005cbe37221391d100e767c587d7",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "article_453955_sen_bam.html.headers.txt",
+        "artifact_file": "article_453955_sen_bam.html",
+        "sha256": "0fd253203ea6f6de389e586b152802a39c87071a200964b2e02da459173e9d08",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "article_453976_dogshow_divas.html.headers.txt",
+        "artifact_file": "article_453976_dogshow_divas.html",
+        "sha256": "ab0875014050f707971d65cc6af3a81070555260136144628f9a53df3288c10a",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "bandera_feed.xml.headers.txt",
+        "artifact_file": "bandera_feed.xml",
+        "sha256": "e3545614b0cc5d9a941345d4fbc03d9057117d1aca6ced62a348d3303b63b0dd",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "application/rss+xml; charset=UTF-8",
+        "status_valid": true,
+        "content_type_valid": true
+      },
+      {
+        "header_file": "inquirer_robots.txt.headers.txt",
+        "artifact_file": "inquirer_robots.txt",
+        "sha256": "4ee1f0befa0d2aad0a2821fb4f73fda9a0a7f4abfb741a446ca5de4c56647657",
+        "status_line": "HTTP/1.1 200 OK",
+        "status_code": 200,
+        "content_type": "text/plain",
+        "status_valid": true,
+        "content_type_valid": true
+      }
+    ]
+  },
+  "robots": {
+    "artifact_file": "inquirer_robots.txt",
+    "body_sha256": "535c7a65306dd524053bef0d127e45a3cd059337eee032e0cdb833105e8dc649",
+    "wildcard_groups": [
+      {
+        "user_agents": [
+          "*"
+        ],
+        "disallow": [
+          "/wp-admin/",
+          "/xmlrpc.php",
+          "/feed-karera",
+          "/feed-lotto",
+          "/feed-full-horoscope",
+          "/feed-karera-tips",
+          "/bandera-custom-feed",
+          "/custom-feed-pagesuite",
+          "/4711/"
+        ]
+      },
+      {
+        "user_agents": [
+          "*"
+        ],
+        "disallow": [
+          "/factiva*",
+          "/61405*",
+          "/.well-known*"
+        ]
+      }
+    ],
+    "wildcard_disallow_rules": [
+      "/wp-admin/",
+      "/xmlrpc.php",
+      "/feed-karera",
+      "/feed-lotto",
+      "/feed-full-horoscope",
+      "/feed-karera-tips",
+      "/bandera-custom-feed",
+      "/custom-feed-pagesuite",
+      "/4711/",
+      "/factiva*",
+      "/61405*",
+      "/.well-known*"
+    ],
+    "article_index_disallowed_for_wildcard": false,
+    "article_index_allowed_for_wildcard": true
+  },
+  "archives": [
+    {
+      "date": "2026-08-17",
+      "artifact_file": "archive_2026-08-17.html",
+      "body_sha256": "c0928feccec3ee32ef64253544f517a26ebf717ed135579a39551d02c54d11d6",
+      "body_size_bytes": 157913,
+      "bandera_section_count": 1,
+      "bandera_section_link_count": 20,
+      "bandera_section_hosts": {
+        "bandera.inquirer.net": 20
+      },
+      "root_candidate_link_count": 320,
+      "root_candidate_hosts": {
+        "bandera.inquirer.net": 20,
+        "business.inquirer.net": 26,
+        "cebudailynews.inquirer.net": 51,
+        "entertainment.inquirer.net": 10,
+        "globalnation.inquirer.net": 17,
+        "lifestyle.inquirer.net": 6,
+        "newsinfo.inquirer.net": 157,
+        "opinion.inquirer.net": 8,
+        "pop.inquirer.net": 1,
+        "sports.inquirer.net": 13,
+        "technology.inquirer.net": 2,
+        "usa.inquirer.net": 9
+      },
+      "configured_selector": "#index-wrap h4:nth-of-type(14) + ul a[href]",
+      "configured_selector_link_count": 20,
+      "configured_selector_hosts": {
+        "bandera.inquirer.net": 20
+      },
+      "configured_selector_only_bandera": true,
+      "pagination_mode_observation": "none; date-navigation claims are not followed"
+    },
+    {
+      "date": "2026-08-18",
+      "artifact_file": "archive_2026-08-18.html",
+      "body_sha256": "be08811a5d13111f2ccfcc293561120c4b8d70bd7de138e831c9d4697d25802a",
+      "body_size_bytes": 156578,
+      "bandera_section_count": 1,
+      "bandera_section_link_count": 18,
+      "bandera_section_hosts": {
+        "bandera.inquirer.net": 18
+      },
+      "root_candidate_link_count": 318,
+      "root_candidate_hosts": {
+        "bandera.inquirer.net": 18,
+        "business.inquirer.net": 28,
+        "cebudailynews.inquirer.net": 51,
+        "entertainment.inquirer.net": 20,
+        "globalnation.inquirer.net": 20,
+        "lifestyle.inquirer.net": 7,
+        "newsinfo.inquirer.net": 133,
+        "opinion.inquirer.net": 8,
+        "pop.inquirer.net": 7,
+        "sports.inquirer.net": 13,
+        "technology.inquirer.net": 5,
+        "usa.inquirer.net": 8
+      },
+      "configured_selector": "#index-wrap h4:nth-of-type(14) + ul a[href]",
+      "configured_selector_link_count": 18,
+      "configured_selector_hosts": {
+        "bandera.inquirer.net": 18
+      },
+      "configured_selector_only_bandera": true,
+      "pagination_mode_observation": "none; date-navigation claims are not followed"
+    },
+    {
+      "date": "2026-08-19",
+      "artifact_file": "archive_2026-08-19.html",
+      "body_sha256": "09c2a333014817e870176c80d0f3a5ac968010ebec9d1408892aa93f23111199",
+      "body_size_bytes": 148616,
+      "bandera_section_count": 1,
+      "bandera_section_link_count": 22,
+      "bandera_section_hosts": {
+        "bandera.inquirer.net": 22
+      },
+      "root_candidate_link_count": 290,
+      "root_candidate_hosts": {
+        "bandera.inquirer.net": 22,
+        "business.inquirer.net": 21,
+        "cebudailynews.inquirer.net": 37,
+        "entertainment.inquirer.net": 15,
+        "globalnation.inquirer.net": 20,
+        "lifestyle.inquirer.net": 8,
+        "newsinfo.inquirer.net": 133,
+        "opinion.inquirer.net": 7,
+        "pop.inquirer.net": 3,
+        "sports.inquirer.net": 14,
+        "usa.inquirer.net": 10
+      },
+      "configured_selector": "#index-wrap h4:nth-of-type(14) + ul a[href]",
+      "configured_selector_link_count": 22,
+      "configured_selector_hosts": {
+        "bandera.inquirer.net": 22
+      },
+      "configured_selector_only_bandera": true,
+      "pagination_mode_observation": "none; date-navigation claims are not followed"
+    }
+  ],
+  "articles": [
+    {
+      "artifact_file": "article_453976_dogshow_divas.html",
+      "body_sha256": "da7c8caead5307f1cff749eae658f3c292b9143c9832e558f925fea02468083a",
+      "body_size_bytes": 210976,
+      "canonical_url": "https://bandera.inquirer.net/453976/dogshow-divas-thankful-kay-joy-barcoma-we-will-always-be-rooting-for-you",
+      "publication_date_raw": "Wed, 02 Sep 2026 19:40:59 PST",
+      "publication_date_source": "meta",
+      "publication_date_parsed": "2026-09-02T19:40:59-08:00",
+      "scoped_selector": "#article-content-wrap #article-content",
+      "scoped_selector_match": "#article-content-wrap #article-content",
+      "scoped_extraction_method": "wordpress",
+      "scoped_body_chars": 1955,
+      "scoped_paragraph_count": 16,
+      "scoped_sentence_count": 20,
+      "scoped_body_valid": true,
+      "current_selector": ".entry-content, #article_content",
+      "current_selector_match": "article|body",
+      "current_extraction_method": "generic-fallback",
+      "current_body_chars": 2191,
+      "current_sentence_count": 22,
+      "article_content_scoped_match_count": 3,
+      "article_content_duplicate_extra_matches": 2,
+      "article_content_match_text_lengths": [
+        2476,
+        226,
+        235
+      ],
+      "secondary_content_is_not_in_scoped_body": true
+    },
+    {
+      "artifact_file": "article_453955_sen_bam.html",
+      "body_sha256": "20c87b3648dc0127157b1045165679b0b01283b5714dd923f6b08164bd9e0cf0",
+      "body_size_bytes": 179856,
+      "canonical_url": "https://bandera.inquirer.net/453955/sen-bam-nangalampag-bakit-wala-pa-ring-batas-kontra-katiwalian",
+      "publication_date_raw": "Wed, 02 Sep 2026 15:08:23 PST",
+      "publication_date_source": "meta",
+      "publication_date_parsed": "2026-09-02T15:08:23-08:00",
+      "scoped_selector": "#article-content-wrap #article-content",
+      "scoped_selector_match": "#article-content-wrap #article-content",
+      "scoped_extraction_method": "wordpress",
+      "scoped_body_chars": 3193,
+      "scoped_paragraph_count": 17,
+      "scoped_sentence_count": 26,
+      "scoped_body_valid": true,
+      "current_selector": ".entry-content, #article_content",
+      "current_selector_match": "article|body",
+      "current_extraction_method": "generic-fallback",
+      "current_body_chars": 3429,
+      "current_sentence_count": 28,
+      "article_content_scoped_match_count": 3,
+      "article_content_duplicate_extra_matches": 2,
+      "article_content_match_text_lengths": [
+        3640,
+        226,
+        235
+      ],
+      "secondary_content_is_not_in_scoped_body": true
+    },
+    {
+      "artifact_file": "article_453856_nanay_ni_sachzna.html",
+      "body_sha256": "5ba5f73198e63c43ce54589ae9fd9c04dc57e16f70840175652f9eb304b870c0",
+      "body_size_bytes": 181882,
+      "canonical_url": "https://bandera.inquirer.net/453856/nanay-ni-sachzna-laparan-rumesbak-kay-angelica-jones-wala-po-kaming-kinita",
+      "publication_date_raw": "Tue, 01 Sep 2026 13:04:23 PST",
+      "publication_date_source": "meta",
+      "publication_date_parsed": "2026-09-01T13:04:23-08:00",
+      "scoped_selector": "#article-content-wrap #article-content",
+      "scoped_selector_match": "#article-content-wrap #article-content",
+      "scoped_extraction_method": "wordpress",
+      "scoped_body_chars": 3224,
+      "scoped_paragraph_count": 19,
+      "scoped_sentence_count": 24,
+      "scoped_body_valid": true,
+      "current_selector": ".entry-content, #article_content",
+      "current_selector_match": "article|body",
+      "current_extraction_method": "generic-fallback",
+      "current_body_chars": 3460,
+      "current_sentence_count": 26,
+      "article_content_scoped_match_count": 3,
+      "article_content_duplicate_extra_matches": 2,
+      "article_content_match_text_lengths": [
+        3735,
+        226,
+        235
+      ],
+      "secondary_content_is_not_in_scoped_body": true
+    }
+  ],
+  "rss": {
+    "artifact_file": "bandera_feed.xml",
+    "body_sha256": "8e492e23993d31d8be923b34ed32dde7a285d09eee31f212d83edc23ae6e7bea",
+    "body_size_bytes": 82485,
+    "item_count": 11,
+    "content_encoded_item_count": 11,
+    "all_items_have_content_encoded": true,
+    "item_links": [
+      "https://bandera.inquirer.net/453976/dogshow-divas-thankful-kay-joy-barcoma-we-will-always-be-rooting-for-you",
+      "https://bandera.inquirer.net/453972/toni-fowler-tyronia-nag-deactivate-na-ng-social-media-page",
+      "https://bandera.inquirer.net/453966/kaila-estrada-inalmahan-mahal-na-tax-sa-pinas-legal-na-holdap",
+      "https://bandera.inquirer.net/453967/angelica-jones-niligawan-ni-win-gatchalian-umamin-kung-bakit-hindi-nagkatuluyan",
+      "https://bandera.inquirer.net/453963/sachzna-laparan-nagsalita-sa-isyu-ng-miss-flawless-title-na-bully",
+      "https://bandera.inquirer.net/453957/vp-sara-duterte-humingi-ng-mas-mababang-budget-sa-2027",
+      "https://bandera.inquirer.net/453959/barbie-forteza-pang-best-actress-sa-saving-cherry-mika-pak-na-pak-bilang-pkpk",
+      "https://bandera.inquirer.net/453955/sen-bam-nangalampag-bakit-wala-pa-ring-batas-kontra-katiwalian",
+      "https://bandera.inquirer.net/453953/navotas-tanging-camanava-city-na-wala-sa-mmda-flood-list",
+      "https://bandera.inquirer.net/453951/dswd-dumipensa-sa-may-amoy-na-bigas-sa-family-food-packs",
+      "https://bandera.inquirer.net/453948/katherine-luna-napaiyak-hindi-nyo-lang-ako-hinusgahan-binastos-nyo-pa-ko"
+    ],
+    "overlap_with_article_capture_canonicals": [
+      "https://bandera.inquirer.net/453955/sen-bam-nangalampag-bakit-wala-pa-ring-batas-kontra-katiwalian",
+      "https://bandera.inquirer.net/453976/dogshow-divas-thankful-kay-joy-barcoma-we-will-always-be-rooting-for-you"
+    ],
+    "overlap_count": 2
+  },
+  "report_only_claims": {
+    "page2_identical": "report_only_unverified",
+    "page2_empty_date_behavior": "report_only_unverified"
+  },
+  "validation": {
+    "manifest_present": true,
+    "headers_complete": true,
+    "robots_article_index_allowed_for_wildcard": true,
+    "all_archives_have_one_bandera_section": true,
+    "all_configured_archive_candidates_are_bandera": true,
+    "articles_have_canonical_and_parsed_date": true,
+    "scoped_selector_is_used": true,
+    "current_selector_mismatch_observed": true,
+    "duplicate_match_counts_recorded": true,
+    "no_secondary_body_or_sentence_inflation": true,
+    "rss_content_type_checked": true,
+    "rss_items_have_encoded_content": true
+  },
+  "overall_status": "validated"
+}

@@ -4,9 +4,71 @@ import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional
+from pathlib import PureWindowsPath
 
 
 _COMMON_CRAWL_COLLECTION_RE = re.compile(r"^CC-MAIN-\d{4}-(?:0[1-9]|[1-4]\d|5[0-3])$")
+
+
+@dataclass(frozen=True)
+class TrafilaturaFallbackConfig:
+    """Validated global settings for the optional body-only fallback."""
+
+    enabled: bool = False
+    trigger: str = "empty_or_short_primary"
+    min_body_chars: int = 200
+    favor_precision: bool = True
+
+    @classmethod
+    def from_mapping(
+        cls, settings: Optional[Mapping[str, Any]] = None
+    ) -> "TrafilaturaFallbackConfig":
+        values = dict(settings or {})
+        _validate_trafilatura_mapping(values, prefix="extraction.fallback.trafilatura")
+        return cls(
+            enabled=values.get("enabled", cls.enabled),
+            trigger=values.get("trigger", cls.trigger),
+            min_body_chars=values.get("min_body_chars", cls.min_body_chars),
+            favor_precision=values.get("favor_precision", cls.favor_precision),
+        )
+
+
+@dataclass(frozen=True)
+class WarcConfig:
+    """Validated global settings for optional WARC response preservation."""
+
+    enabled: bool = False
+    directory: str = "data/warc"
+    preserve_failures: bool = True
+    success_sample_rate: float = 0.0
+    max_response_bytes: int = 10 * 1024 * 1024
+    max_total_bytes_per_run: int = 1024 * 1024 * 1024
+    max_disk_bytes: int = 10 * 1024 * 1024 * 1024
+    rotate_bytes: int = 1024 * 1024 * 1024
+    retention_mode: str = "manual"
+
+    @classmethod
+    def from_mapping(cls, settings: Optional[Mapping[str, Any]] = None) -> "WarcConfig":
+        values = dict(settings or {})
+        _validate_warc_mapping(values, prefix="warc")
+        retention = values.get("retention") or {}
+        return cls(
+            enabled=values.get("enabled", cls.enabled),
+            directory=values.get("directory", cls.directory),
+            preserve_failures=values.get("preserve_failures", cls.preserve_failures),
+            success_sample_rate=values.get("success_sample_rate", cls.success_sample_rate),
+            max_response_bytes=values.get("max_response_bytes", cls.max_response_bytes),
+            max_total_bytes_per_run=values.get(
+                "max_total_bytes_per_run", cls.max_total_bytes_per_run
+            ),
+            max_disk_bytes=values.get("max_disk_bytes", cls.max_disk_bytes),
+            rotate_bytes=values.get("rotate_bytes", cls.rotate_bytes),
+            retention_mode=retention.get("mode", cls.retention_mode),
+        )
+
+
+# Compatibility spelling for integrations that use the acronym as an initialism.
+WARCConfig = WarcConfig
 
 
 @dataclass(frozen=True)
@@ -120,6 +182,105 @@ def _validate_common_crawl_mapping(settings: Mapping[str, Any], *, prefix: str) 
         )
 
 
+def _validate_trafilatura_mapping(settings: Mapping[str, Any], *, prefix: str) -> None:
+    """Validate Trafilatura settings without importing the optional package."""
+
+    enabled = settings.get("enabled", False)
+    if not isinstance(enabled, bool):
+        raise CrawlerConfigValidationError(f"Invalid '{prefix}.enabled': must be a boolean")
+
+    trigger = settings.get("trigger", "empty_or_short_primary")
+    if trigger != "empty_or_short_primary":
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.trigger': expected 'empty_or_short_primary', got {trigger!r}"
+        )
+
+    minimum = settings.get("min_body_chars", 200)
+    if isinstance(minimum, bool) or not isinstance(minimum, int) or not 1 <= minimum <= 10_000_000:
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.min_body_chars': must be an integer between 1 and 10000000, got {minimum!r}"
+        )
+
+    precision = settings.get("favor_precision", True)
+    if not isinstance(precision, bool):
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.favor_precision': must be a boolean"
+        )
+
+
+def _is_relative_directory(value: Any) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    candidate = value.strip().replace("\\", "/")
+    windows = PureWindowsPath(candidate)
+    if windows.is_absolute() or windows.drive:
+        return False
+    if candidate.startswith("/") or any(part == ".." for part in candidate.split("/")):
+        return False
+    return True
+
+
+def _validate_warc_mapping(settings: Mapping[str, Any], *, prefix: str) -> None:
+    """Validate WARC budgets and fail-closed manual retention settings."""
+
+    for field_name in ("enabled", "preserve_failures"):
+        value = settings.get(field_name, getattr(WarcConfig, field_name))
+        if not isinstance(value, bool):
+            raise CrawlerConfigValidationError(
+                f"Invalid '{prefix}.{field_name}': must be a boolean"
+            )
+
+    directory = settings.get("directory", WarcConfig.directory)
+    if not _is_relative_directory(directory):
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.directory': must be a non-empty relative directory"
+        )
+
+    sample_rate = settings.get("success_sample_rate", WarcConfig.success_sample_rate)
+    if (
+        isinstance(sample_rate, bool)
+        or not isinstance(sample_rate, (int, float))
+        or not 0.0 <= float(sample_rate) <= 1.0
+    ):
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.success_sample_rate': must be a number between 0.0 and 1.0, got {sample_rate!r}"
+        )
+
+    byte_fields = (
+        "max_response_bytes",
+        "max_total_bytes_per_run",
+        "max_disk_bytes",
+        "rotate_bytes",
+    )
+    values = {}
+    for field_name in byte_fields:
+        value = settings.get(field_name, getattr(WarcConfig, field_name))
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise CrawlerConfigValidationError(
+                f"Invalid '{prefix}.{field_name}': must be a positive integer, got {value!r}"
+            )
+        values[field_name] = value
+
+    if not (
+        values["max_response_bytes"]
+        <= values["rotate_bytes"]
+        <= values["max_total_bytes_per_run"]
+        <= values["max_disk_bytes"]
+    ):
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}': expected max_response_bytes <= rotate_bytes <= max_total_bytes_per_run <= max_disk_bytes"
+        )
+
+    retention = settings.get("retention", {})
+    if not isinstance(retention, dict):
+        raise CrawlerConfigValidationError(f"Invalid '{prefix}.retention': must be a dictionary")
+    mode = retention.get("mode", "manual")
+    if mode != "manual":
+        raise CrawlerConfigValidationError(
+            f"Invalid '{prefix}.retention.mode': only 'manual' retention is supported, got {mode!r}"
+        )
+
+
 class CrawlerConfigValidationError(ValueError):
     """Raised when crawler configuration fails schema, format, or range validation."""
     pass
@@ -216,6 +377,33 @@ class CrawlerConfig:
             if not isinstance(common_crawl, dict):
                 raise CrawlerConfigValidationError("Invalid 'common_crawl': must be a dictionary")
             _validate_common_crawl_mapping(common_crawl, prefix="common_crawl")
+
+        extraction = self.get("extraction")
+        if extraction is not None:
+            if not isinstance(extraction, dict):
+                raise CrawlerConfigValidationError("Invalid 'extraction': must be a dictionary")
+            fallback = extraction.get("fallback")
+            if fallback is not None:
+                if not isinstance(fallback, dict):
+                    raise CrawlerConfigValidationError(
+                        "Invalid 'extraction.fallback': must be a dictionary"
+                    )
+                trafilatura = fallback.get("trafilatura")
+                if trafilatura is not None:
+                    if not isinstance(trafilatura, dict):
+                        raise CrawlerConfigValidationError(
+                            "Invalid 'extraction.fallback.trafilatura': must be a dictionary"
+                        )
+                    _validate_trafilatura_mapping(
+                        trafilatura,
+                        prefix="extraction.fallback.trafilatura",
+                    )
+
+        warc = self.get("warc")
+        if warc is not None:
+            if not isinstance(warc, dict):
+                raise CrawlerConfigValidationError("Invalid 'warc': must be a dictionary")
+            _validate_warc_mapping(warc, prefix="warc")
 
         diagnostics = self.get("discovery.diagnostics")
         if diagnostics is not None:

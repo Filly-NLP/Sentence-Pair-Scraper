@@ -1,0 +1,432 @@
+{
+  "run_id": "20260902T130828251Z",
+  "database_path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T130828251Z\\trial.db",
+  "inherited_active_statuses": [
+    "DISCOVERED",
+    "PROCESSING",
+    "RETRY_WAIT",
+    "DOWNLOADED"
+  ],
+  "quarantine_next_retry_at": "9999-12-31 23:59:59",
+  "inherited_row_count": 67,
+  "quarantined_row_count": 67,
+  "quarantined_url_ids": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    66,
+    67,
+    68,
+    69,
+    70
+  ],
+  "before": {
+    "total_urls": 70,
+    "status_counts": {
+      "ACCEPTED": 2,
+      "NO_SENTENCES": 1,
+      "PROCESSING": 45,
+      "RETRY_WAIT": 22
+    },
+    "source_method_status_counts": [
+      {
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "ACCEPTED",
+        "count": 1
+      },
+      {
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "count": 22
+      },
+      {
+        "source_id": "gma_filipino",
+        "discovery_method": "RSS",
+        "status": "NO_SENTENCES",
+        "count": 1
+      },
+      {
+        "source_id": "gma_filipino",
+        "discovery_method": "RSS",
+        "status": "PROCESSING",
+        "count": 14
+      },
+      {
+        "source_id": "pang_masa",
+        "discovery_method": "RSS",
+        "status": "PROCESSING",
+        "count": 2
+      },
+      {
+        "source_id": "pilipino_star_ngayon",
+        "discovery_method": "RSS",
+        "status": "ACCEPTED",
+        "count": 1
+      },
+      {
+        "source_id": "pilipino_star_ngayon",
+        "discovery_method": "RSS",
+        "status": "PROCESSING",
+        "count": 29
+      }
+    ],
+    "eligible_rows": [
+      {
+        "url_id": 2,
+        "url": "https://bandera.inquirer.net/453877/shuvee-etrata-sinaway-sa-pag-upo-sa-priority-seat-sa-nyc-subway",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 3,
+        "url": "https://bandera.inquirer.net/453882/mula-teknolohiya-hanggang-media-bagong-negosyo-ni-jonathan-sterling-sa-pilipinas",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 4,
+        "url": "https://bandera.inquirer.net/453879/legarda-bigyan-ng-proteksyon-kabuhayan-ang-mga-bayaning-pilipino-sa-komunidad",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 5,
+        "url": "https://bandera.inquirer.net/453874/toni-fowler-never-papalag-kay-jelai-andres-mananatiling-true-friend-kay-yumi-jen",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 6,
+        "url": "https://bandera.inquirer.net/453871/bride-groom-sa-bulacan-lumusong-sa-baha-matuloy-lang-ang-kasal",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 7,
+        "url": "https://bandera.inquirer.net/453868/carmelle-collado-pambato-ng-pilipinas-sa-eurovision-asia",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 8,
+        "url": "https://bandera.inquirer.net/453865/joy-barcoma-biglang-nag-resign-sa-dogshow-divas-to-protect-my-peace",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 9,
+        "url": "https://bandera.inquirer.net/453856/nanay-ni-sachzna-laparan-rumesbak-kay-angelica-jones-wala-po-kaming-kinita",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 10,
+        "url": "https://bandera.inquirer.net/453851/lilia-pineda-nag-sorry-matapos-banatan-branded-ootd-sa-baha-wake-up-call",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 11,
+        "url": "https://bandera.inquirer.net/453848/lilia-pineda-2-pa-barag-sa-ootd-flood-inspection-o-fashion-week",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 59,
+        "url": "https://bandera.inquirer.net/453892/toni-fowler-dinaig-pa-ang-patay-sa-dami-ng-tribute-sa-social-media",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 60,
+        "url": "https://bandera.inquirer.net/453966/kaila-estrada-inalmahan-mahal-na-tax-sa-pinas-legal-na-holdap",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 61,
+        "url": "https://bandera.inquirer.net/453967/angelica-jones-niligawan-ni-win-gatchalian-umamin-kung-bakit-hindi-nagkatuluyan",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 62,
+        "url": "https://bandera.inquirer.net/453963/sachzna-laparan-nagsalita-sa-isyu-ng-miss-flawless-title-na-bully",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 63,
+        "url": "https://bandera.inquirer.net/453957/vp-sara-duterte-humingi-ng-mas-mababang-budget-sa-2027",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 64,
+        "url": "https://bandera.inquirer.net/453959/barbie-forteza-pang-best-actress-sa-saving-cherry-mika-pak-na-pak-bilang-pkpk",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 65,
+        "url": "https://bandera.inquirer.net/453955/sen-bam-nangalampag-bakit-wala-pa-ring-batas-kontra-katiwalian",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 66,
+        "url": "https://bandera.inquirer.net/453953/navotas-tanging-camanava-city-na-wala-sa-mmda-flood-list",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 67,
+        "url": "https://bandera.inquirer.net/453951/dswd-dumipensa-sa-may-amoy-na-bigas-sa-family-food-packs",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 68,
+        "url": "https://bandera.inquirer.net/453948/katherine-luna-napaiyak-hindi-nyo-lang-ako-hinusgahan-binastos-nyo-pa-ko",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 69,
+        "url": "https://bandera.inquirer.net/453945/angelica-jones-hinamon-ex-bf-na-si-bobby-yan-manligaw-ka-uli",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      },
+      {
+        "url_id": 70,
+        "url": "https://bandera.inquirer.net/453942/katherine-luna-8-anak-sa-6-na-lalaki-sasabihin-nyo-napakalandi-naman-nito",
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "next_retry_at": null
+      }
+    ],
+    "bandera_archive_rows": 0
+  },
+  "after": {
+    "total_urls": 70,
+    "status_counts": {
+      "ACCEPTED": 2,
+      "NO_SENTENCES": 1,
+      "RETRY_WAIT": 67
+    },
+    "source_method_status_counts": [
+      {
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "ACCEPTED",
+        "count": 1
+      },
+      {
+        "source_id": "bandera",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "count": 22
+      },
+      {
+        "source_id": "gma_filipino",
+        "discovery_method": "RSS",
+        "status": "NO_SENTENCES",
+        "count": 1
+      },
+      {
+        "source_id": "gma_filipino",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "count": 14
+      },
+      {
+        "source_id": "pang_masa",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "count": 2
+      },
+      {
+        "source_id": "pilipino_star_ngayon",
+        "discovery_method": "RSS",
+        "status": "ACCEPTED",
+        "count": 1
+      },
+      {
+        "source_id": "pilipino_star_ngayon",
+        "discovery_method": "RSS",
+        "status": "RETRY_WAIT",
+        "count": 29
+      }
+    ],
+    "eligible_rows": [],
+    "bandera_archive_rows": 0
+  },
+  "new_bandera_archive_rows_eligible_before_dry_run": 0,
+  "dry_run_queue_behavior": "dry-run performs no DB writes; no ARCHIVE rows are created",
+  "trial_integrity_check_after_isolation": [
+    "ok"
+  ],
+  "canonical_database_before": {
+    "corpus.db": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db",
+      "exists": true,
+      "size_bytes": 192512,
+      "sha256": "1c3e787d842bf0f4c01ea34f96e2fdef47e930aa8c73873a6075e6cce148e589",
+      "mtime_ns": 1788344373719931100,
+      "mtime_utc": "2026-09-02T10:19:33.719931+00:00"
+    },
+    "corpus.db-wal": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db-wal",
+      "exists": true,
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1788344570754714200,
+      "mtime_utc": "2026-09-02T10:22:50.754714+00:00"
+    },
+    "corpus.db-shm": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db-shm",
+      "exists": true,
+      "size_bytes": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "mtime_ns": 1788346069593491100,
+      "mtime_utc": "2026-09-02T10:47:49.593491+00:00"
+    }
+  },
+  "canonical_database_after": {
+    "corpus.db": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db",
+      "exists": true,
+      "size_bytes": 192512,
+      "sha256": "1c3e787d842bf0f4c01ea34f96e2fdef47e930aa8c73873a6075e6cce148e589",
+      "mtime_ns": 1788344373719931100,
+      "mtime_utc": "2026-09-02T10:19:33.719931+00:00"
+    },
+    "corpus.db-wal": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db-wal",
+      "exists": true,
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mtime_ns": 1788344570754714200,
+      "mtime_utc": "2026-09-02T10:22:50.754714+00:00"
+    },
+    "corpus.db-shm": {
+      "path": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db-shm",
+      "exists": true,
+      "size_bytes": 32768,
+      "sha256": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+      "mtime_ns": 1788346069593491100,
+      "mtime_utc": "2026-09-02T10:47:49.593491+00:00"
+    }
+  },
+  "assertions": {
+    "all_inherited_active_rows_quarantined": true,
+    "no_rows_eligible_after_quarantine": true,
+    "no_preexisting_bandera_archive_rows": true,
+    "trial_integrity_ok": true,
+    "canonical_metadata_unchanged": true
+  }
+}

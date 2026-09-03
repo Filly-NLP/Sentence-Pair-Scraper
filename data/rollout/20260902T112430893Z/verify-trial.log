@@ -1,0 +1,34 @@
+RUN_ID: 20260902T112430893Z
+READ_ONLY: true
+LATEST_CRAWL_RUN: {"crawl_id": "CRAWL_4ce3accfe8484476", "source_id": "bandera", "mode": "crawl", "start_time": "2026-09-02 11:48:46.070140", "end_time": "2026-09-02 11:49:27.061017", "date_range_from": null, "date_range_to": null, "urls_discovered": 5, "urls_fetched": 5, "articles_extracted": 5, "sentences_accepted": 79, "sentences_rejected": 35, "crawler_version": "1.0.0:default", "config_hash": "51f8babe21cf7c96310eccbc1dfdefe9f21bc67ecb36d19dd1f72cbf882ce60c"}
+SELECTED_FINAL_ROWS: [{"url_id": 2, "source_id": "bandera", "discovery_method": "RSS", "url": "https://bandera.inquirer.net/453877/shuvee-etrata-sinaway-sa-pag-upo-sa-priority-seat-sa-nyc-subway", "status": "ACCEPTED", "http_status": 200, "retry_count": 1, "extraction_diagnostics": {"accepted_count": 10, "body_chars": 2101, "breakdown": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 5, "quality": 0, "quote": 7, "total_candidates": 22}, "date_confidence": 1.0, "date_source": "html_meta", "extraction_method": "generic-fallback", "extractor_used": "primary", "fallback_body_chars": 0, "fallback_error": null, "fallback_outcome": "disabled", "paragraph_count": 13, "primary_body_chars": 2101, "primary_outcome": "success", "reason": "accepted", "rejections": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 5, "quality": 0, "quote": 7, "total_candidates": 22}, "segmented_count": 22, "selector_match": "article|body"}}, {"url_id": 3, "source_id": "bandera", "discovery_method": "RSS", "url": "https://bandera.inquirer.net/453882/mula-teknolohiya-hanggang-media-bagong-negosyo-ni-jonathan-sterling-sa-pilipinas", "status": "ACCEPTED", "http_status": 200, "retry_count": 1, "extraction_diagnostics": {"accepted_count": 14, "body_chars": 2746, "breakdown": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 1, "total_candidates": 17}, "date_confidence": 1.0, "date_source": "html_meta", "extraction_method": "generic-fallback", "extractor_used": "primary", "fallback_body_chars": 0, "fallback_error": null, "fallback_outcome": "disabled", "paragraph_count": 17, "primary_body_chars": 2746, "primary_outcome": "success", "reason": "accepted", "rejections": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 1, "total_candidates": 17}, "segmented_count": 17, "selector_match": "article|body"}}, {"url_id": 4, "source_id": "bandera", "discovery_method": "RSS", "url": "https://bandera.inquirer.net/453879/legarda-bigyan-ng-proteksyon-kabuhayan-ang-mga-bayaning-pilipino-sa-komunidad", "status": "ACCEPTED", "http_status": 200, "retry_count": 1, "extraction_diagnostics": {"accepted_count": 27, "body_chars": 5881, "breakdown": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 6, "total_candidates": 35}, "date_confidence": 1.0, "date_source": "html_meta", "extraction_method": "generic-fallback", "extractor_used": "primary", "fallback_body_chars": 0, "fallback_error": null, "fallback_outcome": "disabled", "paragraph_count": 23, "primary_body_chars": 5881, "primary_outcome": "success", "reason": "accepted", "rejections": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 6, "total_candidates": 35}, "segmented_count": 35, "selector_match": "article|body"}}, {"url_id": 5, "source_id": "bandera", "discovery_method": "RSS", "url": "https://bandera.inquirer.net/453874/toni-fowler-never-papalag-kay-jelai-andres-mananatiling-true-friend-kay-yumi-jen", "status": "ACCEPTED", "http_status": 200, "retry_count": 1, "extraction_diagnostics": {"accepted_count": 18, "body_chars": 2721, "breakdown": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 2, "quote": 5, "total_candidates": 27}, "date_confidence": 1.0, "date_source": "html_meta", "extraction_method": "generic-fallback", "extractor_used": "primary", "fallback_body_chars": 0, "fallback_error": null, "fallback_outcome": "disabled", "paragraph_count": 19, "primary_body_chars": 2721, "primary_outcome": "success", "reason": "accepted", "rejections": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 2, "quote": 5, "total_candidates": 27}, "segmented_count": 27, "selector_match": "article|body"}}, {"url_id": 6, "source_id": "bandera", "discovery_method": "RSS", "url": "https://bandera.inquirer.net/453871/bride-groom-sa-bulacan-lumusong-sa-baha-matuloy-lang-ang-kasal", "status": "ACCEPTED", "http_status": 200, "retry_count": 1, "extraction_diagnostics": {"accepted_count": 10, "body_chars": 1652, "breakdown": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 1, "total_candidates": 13}, "date_confidence": 1.0, "date_source": "html_meta", "extraction_method": "generic-fallback", "extractor_used": "primary", "fallback_body_chars": 0, "fallback_error": null, "fallback_outcome": "disabled", "paragraph_count": 10, "primary_body_chars": 1652, "primary_outcome": "success", "reason": "accepted", "rejections": {"duplicate_batch": 0, "duplicate_db": 0, "headline": 0, "language": 2, "quality": 0, "quote": 1, "total_candidates": 13}, "segmented_count": 13, "selector_match": "article|body"}}]
+EVENTS_BY_TYPE: {"rejected:language_english": 13, "rejected:quality_too_short": 2, "rejected:quote": 20, "success:accepted": 5}
+EVENTS_BY_HTTP_STATUS: {"null": 40}
+ARTICLES_BEFORE_AFTER_ADDED: 3/8/5
+SENTENCES_BEFORE_AFTER_ADDED: 21/100/79
+ACCEPTED_SENTENCES: 79
+REJECTED_SENTENCES: 35
+REJECTION_REASONS: {"rejected:language_english": 1, "rejected:quality_too_short": 1, "rejected:quote": 1}
+REMAINING_ELIGIBLE_BANDERA_RSS: 0
+CHANGED_NONSELected_ROWS: 0
+PROCESSING_COUNT: 0
+TRIAL_INTEGRITY: ['ok']
+CANONICAL_UNCHANGED: True
+ACCEPTANCE_CRITERIA:
+  selected_ids_2_3_4_5_6_present: PASS
+  latest_bandera_crawl_run_present: PASS
+  claimed_urls_at_most_5: PASS
+  crawl_events_only_selected_urls: PASS
+  selected_rows_not_processing: PASS
+  no_robots_denials: PASS
+  no_repeated_403_or_429: PASS
+  no_off_domain_or_cross_brand_content_observed: PASS
+  no_processing_rows: PASS
+  no_unexpected_nonselected_changes: PASS
+  trial_integrity_ok: PASS
+  verified_backup_hash_and_integrity_ok: PASS
+  canonical_hash_size_mtime_unchanged: PASS
+  remaining_eligible_bandera_rss_zero: PASS
+  new_sentence_yield_positive: PASS
+ALL_ACCEPTANCE_CRITERIA_PASS: True
+CRITERIA_NOT_MET: []

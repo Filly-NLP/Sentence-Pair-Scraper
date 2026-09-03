@@ -1,0 +1,121 @@
+{
+  "run_id": "20260902T130828251Z",
+  "status": "BLOCKED_AT_LIVE_DISCOVERY",
+  "decision": "do_not_advance",
+  "scope": {
+    "source_id": "bandera",
+    "mode": "archive",
+    "from_date": "2026-08-17",
+    "to_date": "2026-08-23",
+    "granularity": "day",
+    "max_periods": 7,
+    "max_pages_per_period": 1,
+    "max_total_pages": 7,
+    "max_candidates": 200,
+    "pagination_mode": "none",
+    "article_crawl": "not_run"
+  },
+  "evidence_basis": {
+    "raw_validation": "data/rollout/20260902T130828251Z/raw-evidence-validation.json",
+    "raw_manifest": "C:/Users/Dominic/Downloads/raw_evidence_manifest.md",
+    "raw_conclusions_used_as_verified": [
+      "archive pages 2026-08-17, 2026-08-18, and 2026-08-19 returned HTTP 200 in the supplied captures",
+      "Bandera archive link counts in supplied captures were 20, 18, and 22",
+      "the scoped article selector was validated against the supplied article captures"
+    ],
+    "report_only_unverified": [
+      "page-2 pagination behavior",
+      "empty-date behavior",
+      "Bandera subdomain robots behavior from the supplied www.inquirer.net robots capture"
+    ]
+  },
+  "offline_gate": {
+    "raw_evidence_validated": true,
+    "focused_tests_passed": 20,
+    "backup_sha256_verified": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+    "inherited_active_rows_quarantined": 67,
+    "eligible_rows_after_quarantine": 0,
+    "init_db_dry_run_exit_code": 0,
+    "planned_periods": 7,
+    "dry_run_database_unchanged": true
+  },
+  "live_discovery": {
+    "attempts": [
+      {
+        "attempt": 1,
+        "result": "pre_network_cli_failure",
+        "requests": 0,
+        "reason": "unquoted Windows working-directory path"
+      },
+      {
+        "attempt": 2,
+        "result": "network_connect_failure",
+        "archive_requests": 7,
+        "total_network_attempts": 8,
+        "responses": 0,
+        "reason": "All connection attempts failed"
+      },
+      {
+        "attempt": 3,
+        "result": "publisher_http_failure",
+        "crawl_id": "CRAWL_f13284d3f59142ab",
+        "archive_requests": 7,
+        "total_network_attempts": 8,
+        "archive_responses": 7,
+        "http_statuses": [403],
+        "periods": [
+          "2026-08-17",
+          "2026-08-18",
+          "2026-08-19",
+          "2026-08-20",
+          "2026-08-21",
+          "2026-08-22",
+          "2026-08-23"
+        ],
+        "pages_fetched": 0,
+        "candidates_seen": 0,
+        "archive_rows_added": 0,
+        "pagination_requests": 0
+      }
+    ],
+    "acceptance_gate": {
+      "zero_robots_violations": "not_evaluable_from_archive_responses",
+      "no_pagination_loop_escape": true,
+      "at_least_70_percent_real_articles": "not_evaluable",
+      "scope_contamination_below_5_percent": "not_evaluable",
+      "terminal_fetch_failures_below_10_percent": false,
+      "sentence_yield_non_zero": "not_evaluable",
+      "advance": false
+    }
+  },
+  "trial_database": {
+    "path": "data/rollout/20260902T130828251Z/trial.db",
+    "total_urls": 70,
+    "archive_rows": 0,
+    "latest_archive_run": "CRAWL_f13284d3f59142ab",
+    "latest_archive_run_events": {
+      "archive_period_events": 7,
+      "http_error_events": 7,
+      "http_statuses": [403]
+    },
+    "sha256_after": "b40179118371f2d4aa8836f41a3dd396a2b743aca1424c6e71388730329df628"
+  },
+  "canonical_database": {
+    "unchanged": true,
+    "files": {
+      "data/corpus.db": {
+        "sha256_before": "1c3e787d842bf0f4c01ea34f96e2fdef47e930aa8c73873a6075e6cce148e589",
+        "sha256_after": "1c3e787d842bf0f4c01ea34f96e2fdef47e930aa8c73873a6075e6cce148e589"
+      },
+      "data/corpus.db-wal": {
+        "sha256_before": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sha256_after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "data/corpus.db-shm": {
+        "sha256_before": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb",
+        "sha256_after": "fd4c9fda9cd3f9ae7c962b0ddf37232294d55580e1aa165aa06129b8549389eb"
+      }
+    }
+  },
+  "next_action": "keep archive disabled and obtain an approved, reproducible access path before retrying; do not expand the date range or crawl"
+}

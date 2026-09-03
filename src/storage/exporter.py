@@ -25,6 +25,33 @@ class Exporter:
                 query = query.filter(Article.publication_date <= to_date)
         return query
 
+    @staticmethod
+    def _order_query(query):
+        """Make export order reproducible across SQLite query plans."""
+        return query.order_by(Sentence.sentence_id)
+
+    @staticmethod
+    def _existing_csv_sentence_ids(output_path: str) -> set[str]:
+        """Read IDs already present when CSV append mode is requested."""
+        if not os.path.exists(output_path):
+            return set()
+        try:
+            with open(output_path, "r", newline="", encoding="utf-8") as handle:
+                return {
+                    row.get("sentence_id", "")
+                    for row in csv.DictReader(handle)
+                    if row.get("sentence_id")
+                }
+        except (OSError, UnicodeError, csv.Error):
+            # A malformed existing file should not silently be treated as a
+            # complete export; the requested append can still proceed.
+            return set()
+
+    @staticmethod
+    def _validate_query_before_output(query) -> None:
+        """Execute a bounded probe before creating/truncating an output file."""
+        query.limit(1).all()
+
     def export_to_jsonl(
         self,
         output_path: str,
@@ -46,6 +73,8 @@ class Exporter:
         if source_id:
             query = query.filter(Sentence.source_id == source_id)
         query = self._apply_date_filters(query, from_date, to_date)
+        query = self._order_query(query)
+        self._validate_query_before_output(query)
 
         count = 0
         with open(output_path, "w", encoding="utf-8") as f:
@@ -85,9 +114,12 @@ class Exporter:
             query = query.filter(Sentence.source_id == source_id)
             
         query = self._apply_date_filters(query, from_date, to_date)
+        query = self._order_query(query)
 
         file_exists = os.path.exists(output_path)
         write_mode = "a" if (append and file_exists) else "w"
+        existing_sentence_ids = self._existing_csv_sentence_ids(output_path) if append else set()
+        self._validate_query_before_output(query)
         
         count = 0
         with open(output_path, write_mode, newline="", encoding="utf-8") as f:
@@ -103,6 +135,8 @@ class Exporter:
                 ])
             
             for sent, art, src in query.yield_per(1000):
+                if sent.sentence_id in existing_sentence_ids:
+                    continue
                 writer.writerow([
                     sent.sentence_id,
                     sent.sentence_text,

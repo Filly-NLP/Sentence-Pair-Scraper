@@ -22,12 +22,26 @@ class FetchResult:
     error: Optional[str] = None
     error_category: Optional[str] = None
     final_url: Optional[str] = None
+    # Raw wire data is kept separate from the decoded body so optional WARC
+    # preservation can record error responses without feeding them to the
+    # extractor.  ``network_status`` is the status actually received on the
+    # wire; ``status`` remains the pipeline's logical status (304 + cache is
+    # represented as logical 200).
+    response_bytes: bytes = b""
+    request_headers: Dict[str, str] = field(default_factory=dict)
+    network_status: Optional[int] = None
 
     def __post_init__(self):
         if not self.html and self.body:
             self.html = self.body
         elif not self.body and self.html:
             self.body = self.html
+        if self.response_bytes is None:
+            self.response_bytes = b""
+        elif isinstance(self.response_bytes, str):
+            self.response_bytes = self.response_bytes.encode("utf-8", errors="replace")
+        elif not isinstance(self.response_bytes, bytes):
+            self.response_bytes = bytes(self.response_bytes)
 
     def get(self, key: str, default: Any = None) -> Any:
         if key == "html":
@@ -157,6 +171,9 @@ class HTTPFetcher:
                         cached=True,
                         attempts=attempt,
                         error_category="SUCCESS",
+                        response_bytes=response.content,
+                        request_headers=headers,
+                        network_status=response.status_code,
                     )
                 if response.status_code == 200:
                     if self.cache:
@@ -170,6 +187,9 @@ class HTTPFetcher:
                         cached=False,
                         attempts=attempt,
                         error_category="SUCCESS",
+                        response_bytes=response.content,
+                        request_headers=headers,
+                        network_status=response.status_code,
                     )
                 # Transient HTTP statuses that warrant per-request backoff
                 if response.status_code in (408, 425, 429, 500, 502, 503, 504):
@@ -191,6 +211,9 @@ class HTTPFetcher:
                     retry_after=retry_after,
                     error=f"HTTP_{response.status_code}",
                     error_category=category,
+                    response_bytes=response.content,
+                    request_headers=headers,
+                    network_status=response.status_code,
                 )
             except httpx.TimeoutException as exc:
                 last_error = f"timeout: {exc}"
@@ -218,6 +241,8 @@ class HTTPFetcher:
             attempts=self.max_retries,
             error=last_error or "fetch_exhausted",
             error_category=last_category or "NETWORK_ERROR",
+            request_headers=headers,
+            network_status=None,
         )
 
     async def fetch(self, url: str) -> FetchResult:

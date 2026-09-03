@@ -1,0 +1,15 @@
+{
+  "run_id": "20260902T104619598Z",
+  "seed_method": "sqlite3.Connection.backup",
+  "source_backup": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T104619598Z\\corpus.db.backup.sqlite",
+  "source_backup_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "source_backup_integrity_check": [
+    "ok"
+  ],
+  "trial_database": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T104619598Z\\trial.db",
+  "trial_size_bytes": 192512,
+  "trial_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "trial_integrity_check": [
+    "ok"
+  ]
+}

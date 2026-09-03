@@ -1,0 +1,4 @@
+Usage: python -m src.cli.main [OPTIONS] COMMAND [ARGS]...
+Try 'python -m src.cli.main --help' for help.
+
+Error: No such command 'Classes\\College\\4th'.

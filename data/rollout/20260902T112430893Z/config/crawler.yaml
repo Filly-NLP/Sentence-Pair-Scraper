@@ -1,0 +1,136 @@
+crawler:
+  version: "1.0.0"
+  date_cutoff: "2022-01-01"
+  # queue_batch_size is the database query batch size per loop iteration, NOT a total crawl cap.
+  queue_batch_size: 100
+  processing_timeout_seconds: 3600
+  max_lifecycle_retries: 3
+  max_403_retries: 1
+
+discovery:
+  max_sitemap_depth: 5
+  max_sitemap_documents: 1000
+  # Stage 0–2 diagnostics are opt-in and bounded; corpus queue behavior is
+  # unchanged when this remains disabled.
+  diagnostics:
+    enabled: true
+    aggregates:
+      enabled: true
+    persist_aggregates: true
+    sample_cap: 10
+    retention_runs: 20
+
+# Stage 4A link frontier is deliberately disabled until a source is opted in
+# through its own link_discovery.enabled setting in sources.yaml.
+link_discovery:
+  enabled: false
+  max_depth: 1
+  max_parent_pages_per_source_run: 25
+  max_candidates_per_source_run: 500
+  max_links_per_page: 100
+  allow_query_parameters: false
+
+# Stage 5 Common Crawl index seeding is deliberately disabled until a
+# collection and source are explicitly reviewed and opted in together.
+common_crawl:
+  enabled: false
+  index_collection: null
+  max_requests_per_source_run: 6
+  max_index_pages: 5
+  max_candidates_per_source_run: 5000
+  max_response_bytes: 2097152
+  max_total_response_bytes_per_source_run: 10485760
+  timeout_seconds: 30
+  cache_dir: "data/cache/common-crawl"
+
+http:
+  user_agent: "FilipinoCorpusResearchBot/1.0 (+https://github.com/Filly-NLP/Sentence-Pair-Scraper; research-bot@fillynlp.org)"
+  timeout_seconds: 30
+  max_retries: 3
+
+rate_limiting:
+  default_delay_seconds: 5
+  default_max_concurrent: 1
+  # Note: Per-domain pacing is governed by default_delay_seconds and robots crawl-delay;
+  # requests_per_minute/hour are deprecated informational ceilings.
+  default_requests_per_minute: 10
+  default_requests_per_hour: 300
+  backoff:
+    initial_seconds: 5
+    multiplier: 2
+    max_seconds: 300
+    jitter: true
+  cooldown:
+    trigger_threshold: 5
+    duration_seconds: 3600
+
+cache:
+  robots_ttl_hours: 24
+  rss_ttl_minutes: 30
+  http_cache_dir: "data/cache"
+  use_conditional_requests: true
+
+extraction:
+  min_body_chars: 40
+  fallback:
+    trafilatura:
+      enabled: false
+      trigger: "empty_or_short_primary"
+      min_body_chars: 200
+      favor_precision: true
+
+# Stage 7 response preservation is opt-in and independent of corpus storage.
+warc:
+  enabled: false
+  directory: "data/warc"
+  preserve_failures: true
+  success_sample_rate: 0.0
+  max_response_bytes: 10485760
+  max_total_bytes_per_run: 1073741824
+  max_disk_bytes: 10737418240
+  rotate_bytes: 1073741824
+  retention:
+    mode: manual
+
+policy:
+  # Named profile options: default (preserves existing behavior), strict, balanced, recall.
+  # Can also be set under sentence.policy_profile or overridden per-source in sources.yaml.
+  profile: "default"
+
+language:
+  primary_detector: "lingua"
+  target_language: "tl"
+  min_confidence: 0.0
+  classify_mixed: true
+  accepted_languages:
+    - "FILIPINO"
+  allow_mixed: false
+
+sentence:
+  min_tokens: 3
+  max_tokens: 100
+  include_quotes: false
+  include_headlines: false
+  min_quality_score: 0.0
+
+deduplication:
+  exact_hash: true
+  # Note: Exact deduplication (SHA-256) is active on articles and sentences.
+  # SimHash near-duplicate filtering is reserved for offline clustering and is inactive in real-time pipeline.
+  near_duplicate: false
+  near_duplicate_method: "simhash"
+  near_duplicate_threshold: 0
+
+storage:
+  database_url: "sqlite:///data/rollout/20260902T112430893Z/trial.db"
+  raw_html_dir: "data/raw"
+  export_dir: "data/exports"
+
+dataset:
+  # Note: max_source_percentage is an inactive post-processing control.
+  max_source_percentage: null
+  versioning: true
+
+monitoring:
+  check_interval_minutes: 30
+  stats_display: true

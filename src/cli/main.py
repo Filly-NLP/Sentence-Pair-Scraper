@@ -5,6 +5,7 @@ import asyncio
 import json
 import click
 from rich.console import Console
+from sqlalchemy import MetaData, Table, func, inspect, or_, select
 
 from src.crawler.archive_discovery import ArchiveDiscoveryEngine
 from src.crawler.config import CrawlerConfig, CommonCrawlConfig
@@ -16,6 +17,43 @@ from src.storage.database import DatabaseManager
 from src.crawler.discovery_reporting import DiscoveryReport, RootAudit
 
 console = Console()
+
+_CRAWL_DISCOVERY_METHOD_VALUES = {
+    "": None,
+    "all": None,
+    "default": ("RSS", "SITEMAP"),
+    "rss": ("RSS",),
+    "sitemap": ("SITEMAP",),
+    "archive": ("ARCHIVE",),
+    "link": ("LINK",),
+    "common_crawl": ("COMMON_CRAWL",),
+}
+
+
+def _crawl_discovery_method_values(
+    discovery_method: Optional[str],
+) -> Optional[tuple[str, ...]]:
+    """Translate the CLI provenance selector for its queue-count query.
+
+    Keep this CLI-only calculation independent of the replaceable pipeline
+    class so lightweight test doubles do not need private pipeline helpers.
+    The pipeline still validates and applies the selector for the crawl run.
+    """
+    if discovery_method is None:
+        return None
+    if not isinstance(discovery_method, str):
+        raise ValueError("discovery_method must be a string")
+
+    normalized = discovery_method.strip().lower().replace("-", "_")
+    try:
+        return _CRAWL_DISCOVERY_METHOD_VALUES[normalized]
+    except KeyError as exc:
+        allowed = ", ".join(
+            sorted(key.upper() for key in _CRAWL_DISCOVERY_METHOD_VALUES if key)
+        )
+        raise ValueError(
+            f"unsupported discovery_method {discovery_method!r}; expected one of {allowed}"
+        ) from exc
 
 @click.group()
 @click.option("--config-dir", default="config", help="Directory containing configuration files.")
@@ -245,12 +283,27 @@ def audit_discovery_cmd(obj: dict, source: Optional[str], method: str):
     method_upper = "COMMON_CRAWL" if method.lower() == "common-crawl" else method.upper()
     payload = []
     with db_mgr.get_session() as session:
-        from sqlalchemy import func
         from sqlalchemy.exc import SQLAlchemyError
         from src.storage.models import DiscoveryObservation, URL
 
+        # Do not query the mapped URL entity here.  An active legacy corpus
+        # can have a valid ``urls`` table without additive columns such as
+        # discovery_depth; an ORM entity query would select those missing
+        # columns before it can calculate a count.
+        bind = session.get_bind()
+        inspector = inspect(bind)
+        table_names = set(inspector.get_table_names())
+        expected_url_fields = set(URL.__table__.columns.keys())
+        url_table = None
+        available_url_fields = set()
+        if "urls" in table_names:
+            url_table = Table("urls", MetaData(), autoload_with=bind)
+            available_url_fields = set(url_table.c.keys())
+        unavailable_url_fields = sorted(expected_url_fields - available_url_fields)
+
         for src in selected:
             report = DiscoveryReport(source_id=src.id, discovery_method=method_upper)
+            report.metadata["unavailable_fields"] = list(unavailable_url_fields)
             if method_upper in {"RSS", "ALL"}:
                 for feed in src.rss:
                     report.roots.append(RootAudit(
@@ -285,18 +338,29 @@ def audit_discovery_cmd(obj: dict, source: Optional[str], method: str):
                             document_kind="not_fetched",
                         ))
 
-            url_query = session.query(URL).filter(URL.source_id == src.id)
-            if method_upper != "ALL":
-                url_query = url_query.filter(URL.discovery_method == method_upper)
-            report.metadata["stored_url_count"] = url_query.count()
-            status_query = session.query(
-                URL.status, func.count(URL.url_id)
-            ).filter(URL.source_id == src.id)
-            if method_upper != "ALL":
-                status_query = status_query.filter(URL.discovery_method == method_upper)
-            report.metadata["stored_url_statuses"] = {
-                status: count for status, count in status_query.group_by(URL.status).all()
-            }
+            report.metadata["stored_url_count"] = None
+            report.metadata["stored_url_statuses"] = {}
+            if url_table is not None and "source_id" in available_url_fields:
+                url_filters = [url_table.c.source_id == src.id]
+                method_filter_available = (
+                    method_upper == "ALL" or "discovery_method" in available_url_fields
+                )
+                if method_upper != "ALL" and method_filter_available:
+                    url_filters.append(url_table.c.discovery_method == method_upper)
+                if method_filter_available:
+                    report.metadata["stored_url_count"] = session.execute(
+                        select(func.count()).select_from(url_table).where(*url_filters)
+                    ).scalar_one()
+                    if "status" in available_url_fields:
+                        status_rows = session.execute(
+                            select(url_table.c.status, func.count())
+                            .select_from(url_table)
+                            .where(*url_filters)
+                            .group_by(url_table.c.status)
+                        ).all()
+                        report.metadata["stored_url_statuses"] = {
+                            status: count for status, count in status_rows
+                        }
 
             observations = []
             try:
@@ -394,10 +458,33 @@ def audit_link_frontier_cmd(obj: dict, source: str, html_file: Path, base_url: s
 
 @cli.command("crawl")
 @click.option("--source", help="Restrict crawl run to a specific source ID.")
+@click.option(
+    "--limit",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Maximum number of URLs to process in this crawl run.",
+)
+@click.option(
+    "--discovery-method",
+    type=click.Choice(
+        ["all", "default", "rss", "sitemap", "archive", "link", "common-crawl"],
+        case_sensitive=False,
+    ),
+    default="all",
+    show_default=True,
+    help="Filter queued URLs by provenance; 'default' means RSS or SITEMAP.",
+)
 @click.pass_obj
-def crawl_cmd(obj: dict, source: str):
+def crawl_cmd(
+    obj: dict,
+    source: Optional[str],
+    limit: Optional[int] = None,
+    discovery_method: str = "all",
+):
     """Crawl, extract, filter and store sentences."""
     config: CrawlerConfig = obj["config"]
+    registry: Optional[SourceRegistry] = obj.get("registry")
+    method_values = _crawl_discovery_method_values(discovery_method)
     db_mgr = DatabaseManager(config.get("storage.database_url"))
     db_mgr.init_db()
 
@@ -406,19 +493,35 @@ def crawl_cmd(obj: dict, source: str):
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 
         with db_mgr.get_session() as session:
-            pipeline = CrawlPipeline(session, config, config.get("http.user_agent"))
+            pipeline = CrawlPipeline(
+                session,
+                config,
+                config.get("http.user_agent"),
+                source_registry=registry,
+            )
 
-            # Count remaining discovered URLs
-            query = session.query(URL).filter(URL.status == "DISCOVERED")
+            # Count the same due states and provenance selected by the
+            # coordinator so progress reflects the bounded run.
+            now = datetime.utcnow()
+            query = session.query(URL).filter(
+                or_(
+                    URL.status == "DISCOVERED",
+                    (URL.status == "RETRY_WAIT")
+                    & ((URL.next_retry_at == None) | (URL.next_retry_at <= now)),
+                )
+            )
             if source:
                 query = query.filter(URL.source_id == source)
+            if method_values:
+                query = query.filter(URL.discovery_method.in_(method_values))
             total_queued = query.count()
 
             if total_queued == 0:
                 console.print("[yellow]No queued URLs to crawl. Run 'discover' first.[/yellow]")
                 return
 
-            console.print(f"[green]Starting crawl for {total_queued} queued URLs...[/green]")
+            run_total = total_queued if limit is None else min(total_queued, limit)
+            console.print(f"[green]Starting crawl for {run_total} queued URLs...[/green]")
 
             with Progress(
                 SpinnerColumn(spinner_name="line"),
@@ -430,13 +533,18 @@ def crawl_cmd(obj: dict, source: str):
                 TimeRemainingColumn(),
                 console=console
             ) as progress:
-                task = progress.add_task("[cyan]Crawling...", total=total_queued)
+                task = progress.add_task("[cyan]Crawling...", total=run_total)
 
                 def update_progress(url: str):
                     progress.advance(task, 1)
                     progress.update(task, description=f"[cyan]Crawling: {url[:40]}...")
 
-                await pipeline.crawl_queued_urls(source_id=source, progress_callback=update_progress)
+                await pipeline.crawl_queued_urls(
+                    source_id=source,
+                    progress_callback=update_progress,
+                    limit=limit,
+                    discovery_method=discovery_method,
+                )
                 progress.update(task, description="[green]Crawl complete![/green]")
 
     asyncio.run(run_crawl())
@@ -453,8 +561,14 @@ def crawl_cmd(obj: dict, source: str):
 def export_cmd(obj: dict, output: str, format: str, source: str, from_date: str, to_date: str, append: bool, auto_version: bool):
     """Export clean Filipino sentence corpus."""
     config: CrawlerConfig = obj["config"]
-    db_mgr = DatabaseManager(config.get("storage.database_url"))
-    db_mgr.init_db()
+    db_url = config.get("storage.database_url", "sqlite:///data/corpus.db")
+    try:
+        # Export is read-only by contract.  Schema changes belong to the
+        # explicit init-db command and must never happen as a side effect of
+        # producing an artifact.
+        db_mgr = DatabaseManager.read_only(db_url)
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise click.ClickException(str(exc)) from exc
 
     # Handle auto-versioning
     if auto_version:
@@ -477,13 +591,23 @@ def export_cmd(obj: dict, output: str, format: str, source: str, from_date: str,
         return
 
     from src.storage.exporter import Exporter
-    with db_mgr.get_session() as session:
-        exporter = Exporter(session)
-        if format == "jsonl":
-            count = exporter.export_to_jsonl(output, source_id=source, from_date=from_dt, to_date=to_dt)
-        else:
-            count = exporter.export_to_csv(output, source_id=source, from_date=from_dt, to_date=to_dt, append=append)
-        click.echo(f"Successfully exported {count} unique Filipino sentences to {output}.")
+    try:
+        with db_mgr.get_session() as session:
+            exporter = Exporter(session)
+            if format == "jsonl":
+                count = exporter.export_to_jsonl(output, source_id=source, from_date=from_dt, to_date=to_dt)
+            else:
+                count = exporter.export_to_csv(output, source_id=source, from_date=from_dt, to_date=to_dt, append=append)
+    except Exception as exc:
+        from sqlalchemy.exc import OperationalError
+        if isinstance(exc, OperationalError):
+            raise click.ClickException(
+                "Export requires a compatible database schema. Run 'init-db' "
+                "on an approved copy before retrying; export never migrates "
+                "the active corpus automatically."
+            ) from exc
+        raise
+    click.echo(f"Successfully exported {count} unique Filipino sentences to {output}.")
 
 
 
@@ -502,8 +626,12 @@ def requeue_cmd(obj: dict, source: Optional[str], status: Optional[str], due: bo
     from datetime import datetime
 
     config: CrawlerConfig = obj["config"]
-    db_mgr = DatabaseManager(config.get("storage.database_url"))
-    db_mgr.init_db()
+    db_url = config.get("storage.database_url", "sqlite:///data/corpus.db")
+    if not execute:
+        db_mgr = DatabaseManager.read_only(db_url)
+    else:
+        db_mgr = DatabaseManager(db_url)
+        db_mgr.init_db()
 
     with db_mgr.get_session() as session:
         query = session.query(URL)
@@ -532,7 +660,17 @@ def requeue_cmd(obj: dict, source: Optional[str], status: Optional[str], due: bo
             now = datetime.utcnow()
             query = query.filter(or_(URL.next_retry_at == None, URL.next_retry_at <= now))
 
-        matched_urls = query.all()
+        try:
+            matched_urls = query.all()
+        except Exception as exc:
+            from sqlalchemy.exc import OperationalError
+            if isinstance(exc, OperationalError) and not execute:
+                console.print(
+                    "[yellow]Requeue audit unavailable for this legacy schema. "
+                    "Run 'init-db' only on an approved copy, then retry the dry run.[/yellow]"
+                )
+                return
+            raise
         count = len(matched_urls)
 
         console.print(f"[bold]Requeue Scope Analysis:[/bold]")
@@ -597,13 +735,34 @@ def init_db_cmd(obj: dict, dry_run: bool, reclassify_legacy: bool):
 def stats_cmd(obj: dict):
     """Display Filipino News Corpus statistics."""
     config: CrawlerConfig = obj["config"]
-    db_mgr = DatabaseManager(config.get("storage.database_url"))
-    db_mgr.init_db()
+    db_mgr = DatabaseManager.read_only(
+        config.get("storage.database_url", "sqlite:///data/corpus.db")
+    )
 
     from src.storage.models import URL, Article, Sentence, CrawlRun, CrawlEvent
     from sqlalchemy import func
     with db_mgr.get_session() as session:
-        total_urls = session.query(URL).count()
+        try:
+            total_urls = session.query(URL).count()
+        except Exception as exc:
+            from sqlalchemy.exc import OperationalError
+            if not isinstance(exc, OperationalError):
+                raise
+            # Article/sentence counts remain useful on a pre-frontier
+            # database, while mapped URL queries would select columns that do
+            # not exist yet.  Keep stats read-only and make the limitation
+            # explicit instead of auto-migrating or crashing.
+            articles = session.query(Article).count()
+            sentences = session.query(Sentence).count()
+            console.print("[bold blue]Corpus Stats Summary[/bold blue]")
+            console.print("Total Discovered URLs: unavailable (legacy URL schema)")
+            console.print(f"Downloaded Articles:   {articles}")
+            console.print(f"Accepted Sentences:    {sentences}")
+            console.print(
+                "[yellow]URL-level statistics require 'init-db' on an approved copy; "
+                "this read-only command made no schema changes.[/yellow]"
+            )
+            return
         articles = session.query(Article).count()
         sentences = session.query(Sentence).count()
 
@@ -725,8 +884,9 @@ def evaluate_policy_cmd(obj: dict, profile: str, source: Optional[str], limit: i
 
     config: CrawlerConfig = obj["config"]
     registry: SourceRegistry = obj["registry"]
-    db_mgr = DatabaseManager(config.get("storage.database_url"))
-    db_mgr.init_db()
+    db_mgr = DatabaseManager.read_only(
+        config.get("storage.database_url", "sqlite:///data/corpus.db")
+    )
 
     with db_mgr.get_session() as session:
         pipeline = CrawlPipeline(session, config, config.get("http.user_agent"))

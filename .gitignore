@@ -50,6 +50,9 @@ data/cache/
 # Raw HTML snapshots
 data/raw/
 
+# Optional WARC response sidecars (retained independently from the corpus)
+data/warc/
+
 # Exported corpus files (CSV, JSONL)
 data/exports/
 

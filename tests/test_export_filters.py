@@ -55,3 +55,25 @@ def test_jsonl_and_csv_share_date_filters(db_session, tmp_path):
         csv_records = list(csv.DictReader(handle))
     assert [record["article_id"] for record in json_records] == ["a1", "a2"]
     assert [record["article_id"] for record in csv_records] == ["a1", "a2"]
+
+
+def test_csv_append_is_idempotent_by_sentence_id(db_session, tmp_path):
+    db_session.add(Source(source_id="append", name="Append", domain="example.com", language="filipino", enabled=True))
+    db_session.add(Article(
+        article_id="append-art", source_id="append", url_id=10,
+        url="https://example.com/append", article_text="Text.",
+        content_hash="a" * 64, publication_date=datetime(2024, 1, 1),
+    ))
+    db_session.add(Sentence(
+        sentence_id="append-sentence", article_id="append-art", source_id="append",
+        sentence_index=0, paragraph_index=0, sentence_text="Text.", normalized_text="text.",
+        language="FILIPINO", language_confidence=1.0, token_count=1, quality_score=1.0,
+        content_hash="b" * 64,
+    ))
+    db_session.commit()
+
+    path = tmp_path / "append.csv"
+    exporter = Exporter(db_session)
+    assert exporter.export_to_csv(str(path)) == 1
+    assert exporter.export_to_csv(str(path), append=True) == 0
+    assert len(list(csv.reader(path.open(newline="", encoding="utf-8")))) == 2

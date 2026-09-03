@@ -245,7 +245,7 @@ Accepted Filipino sentences: 4,821
 Export the collected sentences to CSV or JSONL for downstream use:
 
 ```bash
-# Export all sentences to CSV (rich 17-column schema)
+# Export all sentences to CSV (rich 19-column schema)
 python -m src.cli.main export --output data/exports/corpus.csv --format csv
 
 # Export to JSONL
@@ -299,8 +299,10 @@ rejections, database duplicates, cross-method duplicates, would-queue, and
 actually-queued counts. The existing `discover --dry-run` remains a planning
 display and is not an alias for this read-only audit.
 
-Archive, Trafilatura, and WARC runtime stages remain deferred and disabled by
-default. Common Crawl index seeding is implemented but remains disabled by two
+Archive execution is implemented with opt-in per-source gates and remains
+disabled by default. Trafilatura fallback and WARC response preservation are
+implemented as opt-in sidecars, but remain disabled by default. Common Crawl
+index seeding is implemented but remains disabled by two
 independent gates. Stage 4A link-frontier code is implemented but remains
 disabled by both gates. Archive execution fails closed when a source
 has no archive config or its archive is disabled; a disabled archive can only
@@ -419,6 +421,71 @@ python -m src.cli.main discover --mode common-crawl --source abante
 The checked-in configuration remains fail-closed; no production rollout is
 implied by this implementation.
 
+### Stage 6 optional Trafilatura fallback
+
+The publisher-aware extractor remains authoritative. When both the global
+fallback and a source gate are enabled, the optional Trafilatura extractor is
+called only for empty or short primary bodies. It supplies a body only; the
+existing metadata, date precedence, sentence quality, language, and
+deduplication pipeline are unchanged. The fallback body replaces rather than
+merges with the primary body, and bounded outcomes are retained in
+`urls.extraction_diagnostics`.
+
+The base installation does not install Trafilatura. Install the optional extra
+only after an offline precision review:
+
+```powershell
+pip install ".[trafilatura]"
+```
+
+```yaml
+# config/crawler.yaml
+extraction:
+  fallback:
+    trafilatura:
+      enabled: false
+      trigger: "empty_or_short_primary"
+      min_body_chars: 200
+      favor_precision: true
+```
+
+Each source has a separate `extraction.trafilatura.enabled` gate. Missing
+optional dependencies are recorded as a diagnostic outcome and do not fail a
+crawl. No checked-in source is enabled.
+
+### Stage 7 optional WARC response preservation
+
+WARC preservation is an independent, opt-in debugging/reproducibility
+sidecar. It can retain selected failure responses and a deterministic sample
+of successful wire responses without affecting extraction or retry behavior.
+Records are gzip-compressed, written through atomic same-directory
+replacement, rotated by size, bounded by response/run/disk budgets, and redact
+credential-like URL query values plus sensitive request/response headers.
+Retention is manual; the corpus database is never deleted by this feature.
+
+The writer uses the standard library, so no WARC dependency is required for the
+base installation. Enable it only after an explicit storage review:
+
+```yaml
+# config/crawler.yaml
+warc:
+  enabled: false
+  directory: "data/warc"
+  preserve_failures: true
+  success_sample_rate: 0.0
+  max_response_bytes: 10485760
+  max_total_bytes_per_run: 1073741824
+  max_disk_bytes: 10737418240
+  rotate_bytes: 1073741824
+  retention:
+    mode: manual
+```
+
+WARC write and finalization failures are isolated from crawl outcomes. Each
+URL keeps only a bounded sidecar reference, digest, record ID, timestamp, and
+status in extraction diagnostics. Disable with `warc.enabled: false`; no live
+rollout is implied by the implementation.
+
 ### Stage 8 offline coverage matrix
 
 Stage 8 verification is offline-only, fixture-backed, and isolated from the
@@ -429,8 +496,8 @@ configuration remains fail-closed; tests do not activate production sources.
 | --- | --- | --- |
 | 8A | In-memory fixture integration for RSS, nested gzip sitemap, archive, link frontier, extraction, lifecycle, and deduplication | Offline tests only |
 | 8B | Common Crawl metadata plus paginated NDJSON overlap/scope checks, temporary cache, durable SQLite close/reopen restart checks, transaction-safe archive cancellation, cross-article sentence deduplication, diagnostics-failure isolation, and copied-legacy migration idempotency | Offline tests only; implemented in `tests/test_stage8_offline_integration.py`, `tests/test_archive_discovery.py`, and `tests/test_stage8b_closure.py` |
-| 6 | Trafilatura fallback | Deferred; not implemented or enabled |
-| 7 | WARC capture/replay | Deferred; not implemented or enabled |
+| 6 | Trafilatura fallback | Implemented; optional dependency and both gates disabled by default |
+| 7 | WARC capture/replay | Implemented; bounded sidecar and gate disabled by default |
 | 9 | Staged live rollout and production activation | Deferred; requires separate approval |
 
 Stage 8B validates Common Crawl as metadata-only URL seeding. It performs no
@@ -541,6 +608,7 @@ Defines each news source. Key fields per source:
 | `common_crawl.url_patterns` | Narrow absolute URL patterns queried in the pinned Common Crawl index |
 | `extraction.type` | Extractor adapter (`wordpress`, `philstar`, `gma`, `generic`) |
 | `extraction.content_selector` | CSS selector for article body |
+| `extraction.trafilatura.enabled` | Per-source Stage 6 fallback gate; disabled by default |
 | `link_discovery.enabled` | Per-source Stage 4A gate; disabled by default |
 | `link_discovery.article_priority` | Priority assigned to accepted linked article URLs |
 | `policy_profile` | Optional named profile override (`strict`, `balanced`, `recall`) |
@@ -576,6 +644,14 @@ Key settings (reconciled with active configuration):
 | `common_crawl.max_response_bytes` | `2097152` | Inactive | Per-response byte limit |
 | `common_crawl.max_total_response_bytes_per_source_run` | `10485760` | Inactive | Total response byte limit |
 | `common_crawl.cache_dir` | `data/cache/common-crawl` | Inactive | Atomic integrity-checked index-response cache |
+| `extraction.fallback.trafilatura.enabled` | `false` | Inactive | Global optional body-only fallback gate; source gate is also required |
+| `extraction.fallback.trafilatura.min_body_chars` | `200` | Inactive | Primary/fallback trigger and fallback acceptance threshold |
+| `warc.enabled` | `false` | Inactive | Optional WARC sidecar gate; retention remains manual |
+| `warc.preserve_failures` | `true` | Inactive | Select wire HTTP failures for preservation |
+| `warc.success_sample_rate` | `0.0` | Inactive | Deterministic sample rate for successful wire responses |
+| `warc.max_response_bytes` | `10485760` | Inactive | Per-response body cap |
+| `warc.max_total_bytes_per_run` | `1073741824` | Inactive | Per-run body budget |
+| `warc.max_disk_bytes` | `10737418240` | Inactive | WARC directory budget |
 | `link_discovery.max_depth` | `1` | Inactive | Maximum parent-to-child link depth |
 | `link_discovery.max_parent_pages_per_source_run` | `25` | Inactive | Parent HTML pages analyzed per source run |
 | `link_discovery.max_candidates_per_source_run` | `500` | Inactive | Accepted linked candidates per source run |
@@ -597,7 +673,7 @@ Key settings (reconciled with active configuration):
 
 ### CSV Schema
 
-Produced by `export --format csv`. Contains 17 columns:
+Produced by `export --format csv`. Contains 19 columns:
 
 | Column | Type | Description |
 |:---|:---|:---|
@@ -618,6 +694,17 @@ Produced by `export --format csv`. Contains 17 columns:
 | `paragraph_index` | int | Paragraph position within article (0-indexed) |
 | `sentence_index` | int | Sentence position within article (0-indexed) |
 | `is_quote` | int | `1` if the sentence is a direct quote, `0` otherwise |
+| `date_source` | string | Evidence source selected for the article publication date |
+| `canonical_url` | string | Canonical URL when supplied by the article |
+
+Export opens the corpus database read-only. CSV `--append` skips sentence IDs
+already present in the target file, so repeating the same export is
+idempotent; it does not remove unrelated rows already in that file.
+
+`audit.py`, `audit-discovery`, `stats`, `evaluate-policy`, and requeue dry-runs
+also use read-only database access. On a legacy database, they report the
+unavailable schema-dependent fields and leave migration to an explicitly
+approved copy.
 
 ### JSONL Schema
 
@@ -630,7 +717,9 @@ Produced by `export --format jsonl`. One JSON object per line:
   "source": "Pilipino Star Ngayon",
   "article_id": "ART_d4f0b15d8d85",
   "publication_date": "2026-08-11",
+  "date_source": "html_jsonld",
   "url": "https://www.philstar.com/bansa/2026/08/11/2548446/...",
+  "canonical_url": null,
   "language": "FILIPINO",
   "language_confidence": 1.0
 }
@@ -690,6 +779,7 @@ Sentence-Pair-Scraper/
 │   │   └── config.py        # crawler.yaml loader (dot-notation)
 │   ├── extraction/
 │   │   ├── base.py          # Article extractor (JSON-LD → OG → CSS)
+│   │   ├── trafilatura_fallback.py # Optional body-only recovery extractor
 │   │   └── date_filter.py   # Publication date validation
 │   ├── language/
 │   │   └── detector.py      # Lingua sentence-level language detector
@@ -700,6 +790,7 @@ Sentence-Pair-Scraper/
 │   │   └── exact.py         # SHA-256 + SimHash fingerprinting
 │   └── storage/
 │       ├── models.py        # SQLAlchemy ORM (sources, urls, articles, sentences)
+│       ├── warc_store.py     # Optional bounded WARC response sidecar
 │       ├── database.py      # DatabaseManager (WAL mode, session factory)
 │       ├── migrations.py    # Schema creation script
 │       └── exporter.py      # CSV and JSONL export with provenance

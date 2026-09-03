@@ -17,7 +17,12 @@ from src.crawler.archive_discovery import ArchiveDiscoveryEngine
 from src.crawler.backoff import BackoffHandler
 from src.crawler.cache import HTTPCache
 from src.crawler.common_crawl_discovery import CommonCrawlDiscoveryEngine
-from src.crawler.config import CrawlerConfig, CommonCrawlConfig
+from src.crawler.config import (
+    CrawlerConfig,
+    CommonCrawlConfig,
+    TrafilaturaFallbackConfig,
+    WarcConfig,
+)
 from src.crawler.discovery import DiscoveryEngine
 from src.crawler.discovery_reporting import DiscoveryDiagnosticsStore
 from src.crawler.fetcher import FetchResult, HTTPFetcher
@@ -28,11 +33,13 @@ from src.crawler.url_normalizer import normalize_url
 from src.deduplication.exact import DeduplicationEngine
 from src.extraction.base import ArticleExtractor
 from src.extraction.date_filter import DateEvidence, DateFilter
+from src.extraction.trafilatura_fallback import extract_body as extract_trafilatura_body
 from src.language.detector import FilipinoLanguageDetector
 from src.sentence.quality_filter import SentenceQualityFilter, normalize_text
 from src.sentence.segmenter import SentenceSegmenter
 from src.sources.registry import SourceConfig, SourceRegistry
 from src.storage.models import Article, CrawlEvent, CrawlRun, Sentence, Source, URL, URLDiscoveryEdge, URLStatus
+from src.storage.warc_store import WarcStore
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,12 @@ class ExtractedData:
     selector_match: Optional[str]
     extraction_method: str
     sentences: List[Dict[str, Any]]
+    extractor_used: str = "primary"
+    primary_outcome: str = "success"
+    primary_body_chars: int = 0
+    fallback_outcome: str = "disabled"
+    fallback_body_chars: int = 0
+    fallback_error: Optional[str] = None
 
 
 @dataclass
@@ -87,10 +100,28 @@ class CrawlOutcome:
 
 
 class CrawlPipeline:
-    def __init__(self, db_session: Session, config: CrawlerConfig, user_agent: str):
+    _DISCOVERY_METHODS = frozenset({
+        "RSS",
+        "SITEMAP",
+        "ARCHIVE",
+        "LINK",
+        "COMMON_CRAWL",
+    })
+
+    def __init__(
+        self,
+        db_session: Session,
+        config: CrawlerConfig,
+        user_agent: str,
+        source_registry: Optional[SourceRegistry] = None,
+    ):
         self.session = db_session
         self.config = config
         self.user_agent = user_agent
+        # The CLI injects the registry loaded alongside --config-dir.  Keep
+        # the old canonical-file fallback for direct callers that predate the
+        # injection point.
+        self.source_registry = source_registry
         cutoff_str = self.config.get("crawler.date_cutoff", "2022-01-01")
         self.cutoff_date = datetime.strptime(cutoff_str, "%Y-%m-%d")
 
@@ -136,6 +167,11 @@ class CrawlPipeline:
         self.include_quotes = bool(self.config.get("sentence.include_quotes", False))
         self.language_threshold = float(self.config.get("language.min_confidence", 0.0))
         self.min_article_chars = int(self.config.get("extraction.min_body_chars", 40))
+        self.trafilatura_fallback = TrafilaturaFallbackConfig.from_mapping(
+            self.config.get("extraction.fallback.trafilatura", {}) or {}
+        )
+        self.warc_config = WarcConfig.from_mapping(self.config.get("warc", {}) or {})
+        self.warc_store = WarcStore(config=self.warc_config) if self.warc_config.enabled else None
         self.processing_timeout = int(self.config.get("crawler.processing_timeout_seconds", 3600))
         self.max_lifecycle_retries = int(self.config.get("crawler.max_lifecycle_retries", 3))
         self.max_403_retries = int(self.config.get("crawler.max_403_retries", 1))
@@ -234,13 +270,19 @@ class CrawlPipeline:
 
     def _source_config(self, source_id: str) -> SourceConfig:
         src = None
-        try:
-            cfg_path = Path("config/sources.yaml")
-            if cfg_path.exists():
-                registry = SourceRegistry(cfg_path)
-                src = registry.get_source(source_id)
-        except Exception:
-            src = None
+        if self.source_registry is not None:
+            try:
+                src = self.source_registry.get_source(source_id)
+            except Exception:
+                src = None
+        else:
+            try:
+                cfg_path = Path("config/sources.yaml")
+                if cfg_path.exists():
+                    registry = SourceRegistry(cfg_path)
+                    src = registry.get_source(source_id)
+            except Exception:
+                src = None
 
         if not src:
             db_source = self.session.query(Source).filter(Source.source_id == source_id).first()
@@ -614,6 +656,7 @@ class CrawlPipeline:
         try:
             url = job.url
             host = job.domain
+            robots_delay = 0.0
             if self.robots_mgr:
                 if hasattr(self.robots_mgr, "is_allowed_async"):
                     res_async = self.robots_mgr.is_allowed_async(url, client=getattr(self.fetcher, "client", None))
@@ -724,7 +767,45 @@ class CrawlPipeline:
                     # a successfully fetched parent into an extraction error.
                     link_error = str(exc)
             extracted = ArticleExtractor.extract(html_content, source_cfg)
-            article_text = normalize_text(extracted.get("article_text", ""))
+            primary_text = normalize_text(extracted.get("article_text", ""))
+            primary_body_chars = len(primary_text)
+            primary_outcome = "success" if primary_text else "empty"
+            if primary_text and primary_body_chars < self.trafilatura_fallback.min_body_chars:
+                primary_outcome = "short"
+
+            article_text = primary_text
+            paragraph_count = extracted.get("paragraph_count", 0)
+            extraction_method = extracted.get("extraction_method", "generic")
+            extractor_used = "primary"
+            fallback_outcome = "disabled"
+            fallback_body_chars = 0
+            fallback_error = None
+            source_extraction = getattr(source_cfg, "extraction", None)
+            source_trafilatura = getattr(source_extraction, "trafilatura", None)
+            source_fallback_enabled = bool(getattr(source_trafilatura, "enabled", False))
+            if self.trafilatura_fallback.enabled and source_fallback_enabled:
+                if primary_body_chars < self.trafilatura_fallback.min_body_chars:
+                    fallback = extract_trafilatura_body(
+                        html_content,
+                        min_body_chars=self.trafilatura_fallback.min_body_chars,
+                        favor_precision=self.trafilatura_fallback.favor_precision,
+                    )
+                    fallback_outcome = fallback.outcome
+                    fallback_body_chars = fallback.body_chars
+                    fallback_error = fallback.error
+                    if fallback.outcome == "success":
+                        # Deliberately replace the primary body; never merge
+                        # the two texts because that would duplicate content.
+                        article_text = normalize_text(fallback.article_text)
+                        paragraph_count = fallback.paragraph_count
+                        extraction_method = "trafilatura"
+                        extractor_used = "trafilatura"
+                        fallback_body_chars = len(article_text)
+                else:
+                    fallback_outcome = "not_triggered"
+            elif self.trafilatura_fallback.enabled:
+                fallback_outcome = "source_disabled"
+
             sentences = SentenceSegmenter.split_sentences(article_text) if article_text else []
 
             extracted_data = ExtractedData(
@@ -736,11 +817,17 @@ class CrawlPipeline:
                 modified_date_raw=extracted.get("modified_date_raw", ""),
                 modified_date_source=extracted.get("modified_date_source", "missing"),
                 article_text=article_text,
-                body_chars=extracted.get("body_chars", len(article_text)),
-                paragraph_count=extracted.get("paragraph_count", 0),
+                body_chars=len(article_text),
+                paragraph_count=paragraph_count,
                 selector_match=extracted.get("selector_match"),
-                extraction_method=extracted.get("extraction_method", "generic"),
+                extraction_method=extraction_method,
                 sentences=sentences,
+                extractor_used=extractor_used,
+                primary_outcome=primary_outcome,
+                primary_body_chars=primary_body_chars,
+                fallback_outcome=fallback_outcome,
+                fallback_body_chars=fallback_body_chars,
+                fallback_error=fallback_error,
             )
             return CrawlOutcome(
                 job=job,
@@ -862,6 +949,37 @@ class CrawlPipeline:
             }, sort_keys=True),
         )
 
+    @staticmethod
+    def _merge_extraction_diagnostics(url_record: URL, patch: Dict[str, Any]) -> None:
+        """Merge bounded diagnostics without discarding other optional metadata."""
+        current: Dict[str, Any] = {}
+        raw = getattr(url_record, "extraction_diagnostics", None)
+        if raw:
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict):
+                    current = parsed
+            except (TypeError, ValueError, json.JSONDecodeError):
+                current = {}
+        current.update(patch)
+        url_record.extraction_diagnostics = json.dumps(current, sort_keys=True)
+
+    @staticmethod
+    def _extraction_diagnostics(extracted: ExtractedData) -> Dict[str, Any]:
+        """Return the common extraction telemetry written for every outcome."""
+        return {
+            "selector_match": extracted.selector_match,
+            "extraction_method": extracted.extraction_method,
+            "extractor_used": extracted.extractor_used,
+            "primary_outcome": extracted.primary_outcome,
+            "primary_body_chars": extracted.primary_body_chars,
+            "fallback_outcome": extracted.fallback_outcome,
+            "fallback_body_chars": extracted.fallback_body_chars,
+            "fallback_error": extracted.fallback_error,
+            "body_chars": extracted.body_chars,
+            "paragraph_count": extracted.paragraph_count,
+        }
+
     def _persist_outcome(self, outcome: CrawlOutcome, run: CrawlRun) -> None:
         """Coordinator persistence: deterministic database state update for a completed job."""
         job = outcome.job
@@ -871,6 +989,25 @@ class CrawlPipeline:
 
         now = datetime.utcnow()
         url_record.last_attempt_at = now
+
+        # WARC preservation is diagnostic and independent of corpus
+        # persistence.  A writer failure must never change the crawl outcome.
+        if self.warc_store is not None and outcome.fetch_result is not None:
+            try:
+                warc_reference = self.warc_store.capture(
+                    job.url,
+                    outcome.fetch_result,
+                    run_id=run.crawl_id if run is not None else None,
+                )
+                self._merge_extraction_diagnostics(
+                    url_record,
+                    {"warc": warc_reference.as_diagnostics()},
+                )
+            except Exception as exc:
+                self._merge_extraction_diagnostics(
+                    url_record,
+                    {"warc": {"outcome": "error", "reason": str(exc)}},
+                )
 
         if outcome.link_discovery_error:
             self._event(
@@ -975,6 +1112,11 @@ class CrawlPipeline:
         if not extracted:
             return
 
+        self._merge_extraction_diagnostics(
+            url_record,
+            self._extraction_diagnostics(extracted),
+        )
+
         url_record.canonical_url = extracted.canonical_url
         raw_date = extracted.publication_date_raw
 
@@ -1025,7 +1167,7 @@ class CrawlPipeline:
             url_record.status = URLStatus.REJECTED
             url_record.failure_class = "date_filter"
             url_record.error_reason = date_reason
-            url_record.extraction_diagnostics = json.dumps({
+            self._merge_extraction_diagnostics(url_record, {
                 "date_reason": date_reason,
                 "date_source": chosen_date_source,
                 "raw_date": raw_date or None,
@@ -1039,7 +1181,7 @@ class CrawlPipeline:
             url_record.status = URLStatus.REJECTED
             url_record.failure_class = "extraction_empty"
             url_record.error_reason = "body_empty"
-            url_record.extraction_diagnostics = json.dumps({
+            self._merge_extraction_diagnostics(url_record, {
                 "reason": "body_empty",
                 "selector_match": extracted.selector_match,
                 "extraction_method": extracted.extraction_method,
@@ -1053,7 +1195,7 @@ class CrawlPipeline:
             url_record.status = URLStatus.REJECTED
             url_record.failure_class = "extraction_too_short"
             url_record.error_reason = "body_too_short"
-            url_record.extraction_diagnostics = json.dumps({
+            self._merge_extraction_diagnostics(url_record, {
                 "reason": "body_too_short",
                 "length": len(article_text),
                 "min_chars": self.min_article_chars,
@@ -1240,7 +1382,7 @@ class CrawlPipeline:
             "date_source": chosen_date_source,
             "date_confidence": chosen_date_conf,
         }
-        url_record.extraction_diagnostics = json.dumps(diagnostics)
+        self._merge_extraction_diagnostics(url_record, diagnostics)
 
         if len(inserted) == 0:
             url_record.status = URLStatus.NO_SENTENCES
@@ -1285,12 +1427,41 @@ class CrawlPipeline:
         outcome = await self._worker_process_job(job, source_cfg)
         self._persist_outcome(outcome, run)
 
-    async def crawl_queued_urls(self, source_id: Optional[str] = None, progress_callback: Optional[callable] = None) -> None:
+    @classmethod
+    def _discovery_method_values(cls, discovery_method: Optional[str]) -> Optional[tuple[str, ...]]:
+        """Translate a CLI/API provenance selector into stored method values."""
+        if discovery_method is None:
+            return None
+        if not isinstance(discovery_method, str):
+            raise ValueError("discovery_method must be a string")
+        normalized = discovery_method.strip().upper().replace("-", "_")
+        if normalized in {"", "ALL"}:
+            return None
+        if normalized == "DEFAULT":
+            return ("RSS", "SITEMAP")
+        if normalized not in cls._DISCOVERY_METHODS:
+            allowed = ", ".join(sorted(cls._DISCOVERY_METHODS | {"ALL", "DEFAULT"}))
+            raise ValueError(f"unsupported discovery_method {discovery_method!r}; expected one of {allowed}")
+        return (normalized,)
+
+    async def crawl_queued_urls(
+        self,
+        source_id: Optional[str] = None,
+        progress_callback: Optional[callable] = None,
+        limit: Optional[int] = None,
+        discovery_method: Optional[str] = None,
+    ) -> None:
         """Process queued URLs in bounded batches with asynchronous concurrent worker execution."""
+        if limit is not None and (
+            isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
+        ):
+            raise ValueError("limit must be a positive integer")
+        method_values = self._discovery_method_values(discovery_method)
         self._recover_stale_processing(source_id)
         run = self._new_run("crawl", source_id)
         self._link_parent_pages_reserved = {}
         self._link_candidates_consumed = {}
+        processed_count = 0
         start = getattr(self.fetcher, "start", None)
         if start:
             started = start()
@@ -1326,6 +1497,8 @@ class CrawlPipeline:
                     query = query.filter(~URL.source_id.in_(blocked_sources))
                 if source_id:
                     query = query.filter(URL.source_id == source_id)
+                if method_values:
+                    query = query.filter(URL.discovery_method.in_(method_values))
                 frontier_source_ids = self._frontier_order_source_ids(query)
                 if frontier_source_ids:
                     frontier_sources = URL.source_id.in_(frontier_source_ids)
@@ -1338,12 +1511,19 @@ class CrawlPipeline:
                     )
                 else:
                     query = query.order_by(URL.url_id)
-                query = query.limit(self.queue_batch_size)
+                remaining = None if limit is None else limit - processed_count
+                if remaining is not None and remaining <= 0:
+                    break
+                batch_limit = self.queue_batch_size if remaining is None else min(
+                    self.queue_batch_size, remaining
+                )
+                query = query.limit(batch_limit)
                 queued = query.all()
                 if not queued:
                     break
 
                 run.urls_discovered += len(queued)
+                processed_count += len(queued)
                 jobs: List[CrawlJob] = []
                 for url_record in queued:
                     source_cfg = self._source_config(url_record.source_id)
@@ -1428,6 +1608,13 @@ class CrawlPipeline:
             run.end_time = datetime.utcnow()
             self.session.commit()
         finally:
+            if self.warc_store is not None:
+                try:
+                    self.warc_store.finalize(run.crawl_id)
+                except Exception:
+                    # WARC is an optional sidecar; finalization cannot turn
+                    # an otherwise completed crawl into a failed run.
+                    pass
             close = getattr(self.fetcher, "close", None)
             if close:
                 closed = close()

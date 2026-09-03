@@ -1,0 +1,18 @@
+{
+  "run_id": "20260902T104619598Z",
+  "backup_method": "sqlite3.Connection.backup",
+  "source": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\corpus.db",
+  "source_size_bytes": 192512,
+  "source_wal_size_bytes": 0,
+  "source_shm_size_bytes": 32768,
+  "backup": "D:\\files\\Online Classes\\College\\4th Year\\random\\Sentence-Pair-Scraper\\data\\rollout\\20260902T104619598Z\\corpus.db.backup.sqlite",
+  "backup_size_bytes": 192512,
+  "backup_sha256": "92c347d62ed8d9850ef94c37d8aeb18151c36aa2a83589cf2056247cabad6923",
+  "source_integrity_check": [
+    "ok"
+  ],
+  "backup_integrity_check": [
+    "ok"
+  ],
+  "recoverability": "verified by opening backup and PRAGMA integrity_check"
+}
